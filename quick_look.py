@@ -33,6 +33,7 @@ def get_quick_look():
     #### Grab the first file and create html page
     hdulist = f.open(dataset_list[0])
     hdr = hdulist[0].header
+
     targname = hdr['targname']
     outfilename = targname + "_quicklook.html"
     exists = os.path.isfile(outfilename)
