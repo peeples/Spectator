@@ -12,11 +12,11 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib.patches as patches 
 from matplotlib import colors
 import scipy.interpolate as sp
 import glob
 import os
-import webbrowser
 
 def get_quick_look(): 
 
@@ -109,7 +109,9 @@ def get_quick_look():
                 sec_coadd = Table.read(hdr['targname']+'_coadd_G160M_final_all.fits') 
                 print 'In the second if statement' 
                 print hdr['targname']+':  quick_look opened  ' + hdr['targname']+'_coadd_G160M_final_all.fits', LAMBDA_MIN, LAMBDA_MAX  
-                plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7, overwave=sec_coadd['WAVE'], overflux=sec_coadd['FLUX'],overwgt=sec_coadd['DQ']+1.,overerror=sec_coadd['ERROR'],overcolor="black")
+                plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, \
+                       window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7, \
+                       overwave=sec_coadd['WAVE'], overflux=sec_coadd['FLUX'],overwgt=sec_coadd['DQ']+1.,overerror=sec_coadd['ERROR'],overcolor="black")
                 print sec_coadd
             addfig = r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
             outfile.write(addfig)
@@ -126,7 +128,13 @@ def get_quick_look():
         labeltext = """full coadd of """+str(hdr['targname'])+""" COS/FUV L"""
         coadd = Table.read(hdr['targname']+'_coadd_G140L_final_all.fits') 
         print hdr['targname']+':  quick_look opened  ' + hdr['targname']+'_coadd_G140L_final_all.fits', LAMBDA_MIN, LAMBDA_MAX  
-        plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 900, 2160, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
+        copy  = Table.read(hdr['targname']+'_coadd_G140L_final_all.fits') 
+	copy['FLUX'] = 0.0 
+        copy['FLUX'][np.where(copy['WAVE'] < 1100)] = coadd['FLUX'][np.where(copy['WAVE'] < 1100)]
+        copy['FLUX'][np.where(copy['WAVE'] > 1900)] = coadd['FLUX'][np.where(copy['WAVE'] > 1900)]
+        plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 900, 2160, 0, MAX_FLUX, \
+		window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7, color='red', \
+		overwave=copy['WAVE'],overflux=copy['FLUX'],overwgt=copy['DQ']+1.,overerror=copy['ERROR'],overcolor='0.96' )
         addfig = r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
         outfile.write(addfig)
 
@@ -265,7 +273,7 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                 f = movingaverage(overflux[i], overwgt[i], smooth)
                 overwave = overwavelength[i][indices]
                 print "plot here", i
-                ax.step(overwave, f, lw=1, color=overcolor, zorder=10)
+                ax.step(overwave, f, lw=1, color=overcolor, zorder=1)
             if "overerror" in kwargs:
                 for i in range(np.shape(overflux)[0]):
                     e = movingaverage(overerror[i], overwgt[i], smooth)
@@ -275,7 +283,7 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
             indices = np.where(overwgt > 0)
             f = movingaverage(overflux, overwgt, smooth)
             overwave = overwavelength[indices]
-            ax.step(overwave, f, lw=1, color=overcolor, zorder=11)
+            ax.step(overwave, f, lw=1, color=overcolor, zorder=2)
             if "overerror" in kwargs:
                 e = movingaverage(overerror, overwgt, smooth)
                 ax.step(overwave, e, lw=1, color=overcolor, zorder=10, alpha=0.2)
@@ -286,12 +294,15 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
     plt.yticks(fontsize=16)
     plt.ylabel(r'flux [erg / s / cm$^2/$ \AA]', fontsize=20)
     plt.xlabel(r'wavelength [\AA]',fontsize=20)
-    plt.text(0.99, 0.82, labeltext, fontsize=16, transform=ax.transAxes, horizontalalignment='right')
     plt.tight_layout()
-    print "plotting spectrum / spectra to ", output_name
-    if os.path.isfile(output_name):
-        command = "rm -f " + output_name
-        os.system(command)
+    if 'full' in labeltext: 
+        ax.add_patch(patches.Rectangle((0.705,0.90), 0.290, 0.08, transform=ax.transAxes,facecolor='#ffffff',zorder=14, linewidth=0.3)) 
+        plt.text(0.99, 0.92, labeltext, fontsize=16, transform=ax.transAxes, horizontalalignment='right', color='black', zorder=15)
+    else: 
+        ax.add_patch(patches.Rectangle((0.80,0.80), 0.195, 0.18, transform=ax.transAxes,facecolor='#ffffff',zorder=14, linewidth=0.3)) 
+        plt.text(0.99, 0.82, labeltext, fontsize=16, transform=ax.transAxes, horizontalalignment='right', color='black', zorder=15)
+
+    if os.path.isfile(output_name):   os.system("rm -f " + output_name) 
     plt.savefig(output_name)
     plt.close(fig)
 
@@ -346,7 +357,6 @@ def get_demographics(dataset_list):
         maxwave = 1900 
         maxflux = 1e-14 
         if(np.shape(indices)[1] > 0):
-            # if(hdr['cenwave'] == 1280 or hdr['cenwave'] == 1105):
             if(hdr['OPT_ELEM'] == 'G140L'):
                 minwave = 900.
                 maxwave = 2160.
@@ -356,9 +366,9 @@ def get_demographics(dataset_list):
                 maxwave = 1900 
                 maxflux = 3.0 * np.median(data["flux"][indices])   # changed from max of flux by JT 072015 
             if hdr['DETECTOR'] == 'NUV': 
-                minwave = 1500
-                maxwave = 3500 
-                maxflux = 5.0 * np.mean(data["flux"][indices])   # changed from max of flux by JT 072015 
+                minwave = 1700
+                maxwave = 3000 
+                maxflux = 3.0 * np.mean(data["flux"][indices])   # changed from max of flux by JT 072015 
             ranges.append((minwave, maxwave, maxflux))
         print "Incorporating minwave, maxwave, maxflux from:    ", filename, hdr['detector'], hdr['opt_elem'], hdr['cenwave'], minwave, maxwave, maxflux 
         hdulist.close()
