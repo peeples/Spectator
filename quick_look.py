@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 from astropy.io import fits as f
 from astropy.table import Table, Column
 from astropy.io import ascii
@@ -17,6 +19,7 @@ from matplotlib import colors
 import scipy.interpolate as sp
 import glob
 import os
+import sys
 
 def get_quick_look(): 
 
@@ -570,3 +573,13 @@ def plot_time_flux(tf, **kwargs):
     plt.savefig("time_flux.png")
     plt.close(fig)
 
+
+
+#-----------------------------------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    get_quick_look()
+    sys.exit("""
+    ~~~~~~~*~*~*~*~
+    ~~~~~~~*~*~*~*~  all done!!!! spectra are fun!
+    ~~~~~~~*~*~*~*~""")
