@@ -1,3 +1,10 @@
+from astropy.io import fits as f
+from astropy.table import Table, Column
+from astropy.io import ascii
+from datetime import datetime
+import numpy as np
+import copy
+import sys
 import os
 
 def main(screen):

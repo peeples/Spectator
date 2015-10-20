@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 
 from astropy.io import fits as f
-from astropy.table import Table, Column
-from astropy.io import ascii
+from astropy.table import Table
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -13,9 +12,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
 import matplotlib.patches as patches 
-from matplotlib import colors
 import scipy.interpolate as sp
 import glob
 import os
@@ -43,7 +40,7 @@ def get_quick_look():
     if exists:
         command = "rm -f "+outfilename
         os.system(command)
-    outfile = open(outfilename,"w")
+    outfile = open(outfilename, "w")
 
     coord = SkyCoord(ra=hdr['RA_TARG']*u.degree, dec=hdr['DEC_TARG']*u.degree)
     info = """<html>
