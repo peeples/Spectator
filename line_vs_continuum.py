@@ -22,6 +22,8 @@ def line_vs_continuum(filename):
    
         s_to_n = f / e 
 
+	#### here's a new benign comment 
+
 	fig = plt.figure(figsize=(6,6),dpi=300)
         ax = fig.add_subplot(111) 
         plt.plot(w, s_to_n) 
