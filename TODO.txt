@@ -1,10 +1,13 @@
+Things to get done by Dec 1: (?)
+ - choose and order USB sticks. ~250 at $15/piece ?  who actually orders them?
+
 
 Things we want done by Jan 4:
 - coadds of all COS FUV targets (G130M, G160M, G140L)
 ---includes targname combinations, NED/SIMBAD resolved?
 - value added data (also from NED? QSO redshifts, spectral types, ...)
 - JavaScript tables
-- tables of info (fits) of what's actually in each coadd
+- tables of info (fits and pickle?) of what's actually in each coadd
 - GitHub for quicklooks (need better name)
 - documentation ...
 - hander / flyer! (Need URL)
