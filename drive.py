@@ -6,11 +6,27 @@ import matplotlib as mpl
 mpl.use('Agg')
 import os
 import multiprocessing as mp
+import argparse
 
 import quick_look
 import add
 import sys
 
+
+def parse_args():
+    '''
+    Parse command line arguments.  Returns args object.
+    '''
+    parser = argparse.ArgumentParser(description="makes co-adds and quicklooks for everything in 'filename.canonical' file")
+    parser.add_argument('filename', metavar='canonical', type=str, action='store',
+                        help='filename.canonical is the file to be read in')
+
+    parser.add_argument('--clobber', dest='clobber', action='store_true')
+    parser.add_argument('--no-clobber', dest='clobber', action='store_false')
+    parser.set_defaults(clobber=False)
+
+    args = parser.parse_args()
+    return args
 
 def drive_targets(targets):
     clobber = targets[1]
@@ -86,8 +102,10 @@ def mp_drive_dirlist(dirc):
 #-----------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    targets = ( "qso_absorber" , 1 ) 
-    clobber = 1
+    args = parse_args()
+    # targets = ( "qso_absorber" , 1 ) 
+    # clobber = 1
+    targets = (args.filename, args.clobber)
     
     drive_targets(targets)
     sys.exit("""
