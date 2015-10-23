@@ -309,8 +309,8 @@ def get_wavelength_grid(grating):
 
     wavefile = "xaa18189l_disp.fits"
     print "looking for wavelength grid file",wavefile,"......should really be passing in a reference/ dir........"
-    if os.path.isfile("/grp/hst/HST_spectro/datapile/code/"+wavefile):
-        a = Table.read('/grp/hst/HST_spectro/datapile/code/'+wavefile)
+    if os.path.isfile("/grp/hst/HST_spectro/datapile/"+wavefile):
+        a = Table.read('/grp/hst/HST_spectro/datapile/'+wavefile)
     elif os.path.isfile("../../reference/"+wavefile):
         a = Table.read('../../reference/'+wavefile)
     elif os.path.isfile("../../msp-code/reference/"+wavefile):
