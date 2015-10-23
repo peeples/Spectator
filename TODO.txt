@@ -53,10 +53,7 @@ Sample Tables (JT)
 - 9.99 and other bogus values in S/N field 
 - add FUV L coadd by LP links? (last column) 
 - make appropriate downloads available - all, by LP, and filtered x1d list 
-- rename UNUSED to UNALLOCATED
 - switch N_exposures to *int* in table 
-- EBJ: Most of the “exposures” and “download” links are not recognized, and one is sent to a page
-that says so.  I expect that this is just a consequence that this is work “in progress."
 - EBJ: You need to resolve the incompatibilities between HST target names defined by users
 (according to the rules established by STScI) and those recognized by Simbad or Ned.
 Perhaps you could write a program that goes through all the names listed in our
@@ -70,8 +67,15 @@ objects within some specified angular distance from the target.
 with a S/N << 1 came out, as evidenced by the very high error vector and the bar-code
 appearance of the spectrum.  OK, no surprise, but what’s the little spectrum underneath
 the bar code?
-- Danforth: For my own purposes, it would be useful to have a redshift field to sort by.  However, I realize all too well that this is not a field in the FITS headers or a required field in the APT input.  Another useful field would be PI name(s).  A lot of the time, I can parse whether a dataset would be useful based on who proposed for it.
-- Danforth: “A few bugs: the MAST links from each object could be position-based rather than name based.  Both of the random targets I tried got error messages saying that "name X can't be resolved into a position".  Also, S/N and number of exposures could have a few less significant figures.”
+- Danforth: For my own purposes, it would be useful to have a redshift field to sort by.  
+However, I realize all too well that this is not a field in the FITS headers or a 
+required field in the APT input.  Another useful field would be PI name(s).  
+A lot of the time, I can parse whether a dataset would be useful based on who 
+proposed for it.
+- Danforth: “A few bugs: the MAST links from each object could be position-based 
+rather than name based.  Both of the random targets I tried got error messages 
+saying that "name X can't be resolved into a position".  Also, S/N and number of 
+exposures could have a few less significant figures.”
 
 
 
