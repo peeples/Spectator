@@ -4,7 +4,6 @@ from astropy.io import ascii
 import numpy as np
 import multiprocessing as mp
 import argparse
-import glob
 import os 
 import sys  
 
@@ -16,7 +15,7 @@ def parse_args():
     '''
     Parse command line arguments.  Returns args object.
     '''
-    parser = argparse.ArgumentParser(description="makes co-adds and quicklooks for everything in 'filename.canonical' file")
+    parser = argparse.ArgumentParser(description="makes quicklooks for everything in 'filename.canonical' file")
     parser.add_argument('filename', metavar='canonical', type=str, action='store',
                         help='filename.canonical is the file to be read in')
 
@@ -40,7 +39,7 @@ def drive_quicklook(targets):
     print 'clobber ', clobber 
     dirc = []
     for d in dirlist:
-        dirc.append((d,clobber))
+        dirc.append((d, clobber))
 
     mp_drive_ql_dirlist(dirc)
 
@@ -55,7 +54,7 @@ def drive_ql_dirlist(dirc):
         # PUT ANYTHING THAT WILL BE DONE IN TARGET DIRECTORY HERE 
         filelist = os.listdir('.') 
         print dirname, ":  ", filelist 
-        if(clobber !=1 and os.path.exists(dirname+'_quicklook.html')): 
+        if(clobber != 1 and os.path.exists(dirname+'_quicklook.html')): 
             print dirname+ ":  Quicklook already exists, skipping  "
         else: 
             print dirname+":  Creating Quick Look for ", dirname  
