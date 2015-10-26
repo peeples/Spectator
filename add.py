@@ -53,6 +53,7 @@ def main(screen):
         number_of_segments = np.size(tt[nn]['SEGMENT'])
         print 'DQ number of segments', number_of_segments
 
+        
         for nseg in np.arange(number_of_segments):
             test = (tt[nn]['DQ'][nseg] & 2**0) | (tt[nn]['DQ'][nseg] & 2**3)  | (tt[nn]['DQ'][nseg] & 2**6) | (tt[nn]['DQ'][nseg] & 2**7) | \
                 (tt[nn]['DQ'][nseg] & 2**8) | (tt[nn]['DQ'][nseg] & 2**9) | (tt[nn]['DQ'][nseg] & 2**11) | (tt[nn]['DQ'][nseg] & 2**13)
