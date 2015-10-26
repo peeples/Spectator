@@ -1,57 +1,88 @@
-from astropy.io import fits
+#! /usr/bin/env python
+
 from astropy.io import ascii 
 import numpy as np
-import matplotlib as mpl
-mpl.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-from matplotlib import colors
+import multiprocessing as mp
+import argparse
 import glob
 import os 
 import sys  
 
 import quick_look 
-import line_vs_continuum 
-import add 
 
-mpl.rcParams['agg.path.chunksize'] = 10000 
  
 
-def drive_quicklook(canonical_filename, clobber): 
-	
-	canonical = ascii.read(canonical_filename+'.canonical') 
-	print canonical['col1'] 
-	print canonical['col2'] 
- 	dirlist = canonical['col2'][np.where(canonical['col1'] == 1)]
-	print "dirlist in driver" 
-	print dirlist 
+def parse_args():
+    '''
+    Parse command line arguments.  Returns args object.
+    '''
+    parser = argparse.ArgumentParser(description="makes co-adds and quicklooks for everything in 'filename.canonical' file")
+    parser.add_argument('filename', metavar='canonical', type=str, action='store',
+                        help='filename.canonical is the file to be read in')
 
-	print 'clobber ', clobber 
+    parser.add_argument('--clobber', dest='clobber', action='store_true')
+    parser.add_argument('--no-clobber', dest='clobber', action='store_false')
+    parser.set_defaults(clobber=False)
 
- 	for dirname in dirlist: 
-		print "Driving target:  ", dirname
-                if (os.path.isdir(dirname)): 
-			os.chdir(dirname) 
+    args = parser.parse_args()
+    return args
 
-		# PUT ANYTHING THAT WILL BE DONE IN TARGET DIRECTORY HERE 
+#-----------------------------------------------------------------------------------------------------
 
-			filelist = os.listdir('.') 
-			print dirname, ":  ", filelist 
- 
-  			if(clobber !=1 and os.path.exists(dirname+'_quicklook.html')): 
-  				print dirname+ ":  Quicklook already exists, skipping  "
-			else: 
-				print dirname+":  Creating Quick Look for ", dirname  
-			quick_look.get_quick_look() 
-  
-		# NOW DONE WITH EVERYTHING THAT WILL BE DONE IN TARGET DIRECTORY 
- 
-			os.chdir('..')  		# go back to "datapile" 
+def drive_quicklook(targets): 
+    clobber = targets[1]
+    canonical = ascii.read(targets[0]+'.canonical') 
+    print canonical['col1'] 
+    print canonical['col2'] 
+    dirlist = canonical['col2'][np.where(canonical['col1'] == 1)]
+    print "dirlist in driver" 
+    print dirlist 
+    print 'clobber ', clobber 
+    dirc = []
+    for d in dirlist:
+        dirc.append((d,clobber))
+
+    mp_drive_ql_dirlist(dirc)
+
+#-----------------------------------------------------------------------------------------------------
+
+def drive_ql_dirlist(dirc):
+    dirname = dirc[0]
+    clobber = dirc[1]
+    print "Driving target:  ", dirname
+    if (os.path.isdir(dirname)): 
+        os.chdir(dirname) 
+        # PUT ANYTHING THAT WILL BE DONE IN TARGET DIRECTORY HERE 
+        filelist = os.listdir('.') 
+        print dirname, ":  ", filelist 
+        if(clobber !=1 and os.path.exists(dirname+'_quicklook.html')): 
+            print dirname+ ":  Quicklook already exists, skipping  "
+        else: 
+            print dirname+":  Creating Quick Look for ", dirname  
+        quick_look.get_quick_look() 
+        # NOW DONE WITH EVERYTHING THAT WILL BE DONE IN TARGET DIRECTORY 
+    os.chdir('..')          # go back to "datapile" 
 
 
+#-----------------------------------------------------------------------------------------------------
+
+def mp_drive_ql_dirlist(dirc):
+    pool = mp.Pool(processes=6)
+    pool.map(drive_ql_dirlist, dirc)
 
 
+#-----------------------------------------------------------------------------------------------------
 
-
+if __name__ == "__main__":
+    args = parse_args()
+    targets = (args.filename, args.clobber)
+    
+    drive_quicklook(targets)
+    sys.exit("""
+    
+    ~~~~~~~*~*~*~*~
+    ~~~~~~~*~*~*~*~  all done!!!! spectra are fun!
+    ~~~~~~~*~*~*~*~
+    """)
 
 
