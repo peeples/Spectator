@@ -29,7 +29,7 @@ def scrape_headers(canonical_filename):
 
 	sample_webtable = Table(names=('Number','Target Name', 'RA','DEC','N_exposures','Target Category', \
 		'Target Description','Simbad', 'MAST', 'S/N (130)', 'FUV M','FUV L', 'FUV M Download (by LP)'), \
-		dtype=('i4','S200','f4','f4','I8','S20','S20','S240','S240','f1','S250','S250','S350')) 
+		dtype=('i4','S200','f4','f4','S240','S20','S20','S240','S240','f1','S250','S250','S350')) 
 
 	targets = Table(names=('Flag','Target Name', 'Target Category', 'Target Description'), dtype=('i4','S200','S25', 'S350')) 
 
@@ -84,7 +84,10 @@ def scrape_headers(canonical_filename):
 
 			simbad_string = '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?CooDefinedFrames=none&CooEpoch=2000&Coord='+str(ra)+'d'+str(dec)+'d&submit=submit%20query&Radius.unit=arcsec&CooEqui=2000&CooFrame=FK5&Radius=4"> SIMBAD </a>'  
 
-			mast_string = '<a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html?searchQuery='+targname+'"> MAST  </a>'  
+			mast_string = '<a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html?searchQuery='+str(ra)+','+str(dec)+'"> MAST  </a>'  
+			print mast_string 
+
+			n_exp_string = '<a href="'+targname+'/all_exposures.html">'+str(np.size(filelist))+'</a>' 
 
 			fuv_m_quicklook_urlstring = '...' 
 			fuv_l_quicklook_urlstring = '...' 
@@ -126,7 +129,7 @@ def scrape_headers(canonical_filename):
 			print 
 
 
-			sample_webtable.add_row([number,targname_urlstring,ra, dec,np.size(filelist),str.split(targdesc,';')[0],targdesc,simbad_string, mast_string, median_sn, fuv_m_quicklook_urlstring, fuv_l_quicklook_urlstring, download_string]) 
+			sample_webtable.add_row([number,targname_urlstring,ra, dec,n_exp_string,str.split(targdesc,';')[0],targdesc,simbad_string, mast_string, median_sn, fuv_m_quicklook_urlstring, fuv_l_quicklook_urlstring, download_string]) 
 
 			sample_fitstable.add_row([number,targname, ra, dec, np.size(filelist),str.split(targdesc,';')[0],targdesc,median_sn]) 
 
@@ -150,21 +153,24 @@ def scrape_headers(canonical_filename):
 						hdr0['PROPOSID'], hdr0['PR_INV_L'], hdr0['DETECTOR'], hdr0['SEGMENT'], hdr0['LIFE_ADJ'],  \
 					hdr0['OPT_ELEM'], hdr0['CENWAVE'], hdr0['FPPOS'], hdr1['EXPTIME'], hdr1['NEVENTS'], hdr0['EXTENDED'], hdr1['DATE-OBS'], hdr0['TARDESCR']] )  
 
-				for key in ["HISTORY", "COMMENT",""]: 
-					del hdr0[key] 
-				names = sorted(hdr0.keys()) 
-			        rows = [hdr0[k] for k in names]
-				header_table0 = vstack([header_table0, Table(rows=[rows], names=names)])
+				if (False): 
 
-				for key in ["HISTORY", "COMMENT",""]: 
-					del hdr1[key] 
-				names = sorted(hdr1.keys()) 
-			        rows = [hdr1[k] for k in names]
-				header_table1 = vstack([header_table1, Table(rows=[rows], names=names)])
-				total_number_of_headers = total_number_of_headers + 1 
-				print 'TOTAL NUMBER OF HEADERS : ', total_number_of_headers 
+					for key in ["HISTORY", "COMMENT",""]: 
+						del hdr0[key] 
+					names = sorted(hdr0.keys()) 
+				        rows = [hdr0[k] for k in names]
+					header_table0 = vstack([header_table0, Table(rows=[rows], names=names)])
+	
+					for key in ["HISTORY", "COMMENT",""]: 
+						del hdr1[key] 
+					names = sorted(hdr1.keys()) 
+				        rows = [hdr1[k] for k in names]
+					header_table1 = vstack([header_table1, Table(rows=[rows], names=names)])
+					total_number_of_headers = total_number_of_headers + 1 
+					print 'TOTAL NUMBER OF HEADERS : ', total_number_of_headers 
 
-			ascii.write(exposure_cat, 'all_exposures.txt') 			# write out the exposures for this target by itself 
+			ascii.write(exposure_cat, 'all_exposures.txt') 							# write out the exposures for this target by itself 
+			exposure_cat.write('all_exposures.html', format='jsviewer') 			# write out the exposures for this target by itself 
 			print "ALL EXPOSURES"   
 			print exposure_cat 
 

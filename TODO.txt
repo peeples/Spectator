@@ -22,7 +22,7 @@ Release / Publicity
 
 Quicklooks (MSP) 
 ————————————————
-- y-scaling of NUV in quick look exposure plots 
+- y-scaling of NUV in quick look exposure plots [see “IO-210W” for an example of where it goes wrong.]
 - are the grey error vectors in the quicklook plots correct? They look too large. 
 - keep binning noisy ones until they look OK in quick-looks? 
 - EBJ: For the composite spectrum plot, why are there no S/N values given for the colored
@@ -52,8 +52,7 @@ Sample Tables (JT)
 - ALL EXPOSURE TABLES ARE DEAD OR MISSING! 
 - 9.99 and other bogus values in S/N field 
 - add FUV L coadd by LP links? (last column) 
-- make appropriate downloads available - all, by LP, and filtered x1d list 
-- switch N_exposures to *int* in table 
+- make appropriate downloads available: all, by LP, and filtered x1d list 
 - EBJ: You need to resolve the incompatibilities between HST target names defined by users
 (according to the rules established by STScI) and those recognized by Simbad or Ned.
 Perhaps you could write a program that goes through all the names listed in our
