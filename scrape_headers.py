@@ -5,25 +5,18 @@ from astropy.table import Table, vstack
 from astropy.io import ascii
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 import glob
 import os 
 import sys  
-
-import quick_look 
- 
-
 
 def parse_args():
     '''
     Parse command line arguments.  Returns args object.
     '''
-    parser = argparse.ArgumentParser(description="scrapes headers for everything in 'filename.canonical' file")
+    parser = argparse.ArgumentParser(description="scrapes headers for everything in 'filename.list' file")
     parser.add_argument('filename', metavar='canonical', type=str, action='store',
-                        help='filename.canonical is the file to be read in')
-
-    parser.add_argument('--clobber', dest='clobber', action='store_true')
-    parser.add_argument('--no-clobber', dest='clobber', action='store_false')
-    parser.set_defaults(clobber=False)
+                        help='filename.list is the file to be read in')
 
     args = parser.parse_args()
     return args
@@ -31,12 +24,11 @@ def parse_args():
 #-----------------------------------------------------------------------------------------------------
 
 def scrape_headers(targets): 
-    clobber = targets[1]
-    canonical = ascii.read(targets[0]+'.canonical')
+    canonical_filename = targets
+    canonical = ascii.read(canonical_filename+'.list')
 
-    print canonical['col1']
-    print canonical['col2']
-    dirlist = canonical['col2'][np.where(canonical['col1'] == 1)]
+    print canonical
+    dirlist = canonical['targname'][np.where(canonical['flag'] == 1)]
     print "dirlist in driver"
     print dirlist 
 
@@ -49,9 +41,10 @@ def scrape_headers(targets):
 
     targets = Table(names=('Flag','Target Name', 'Target Category', 'Target Description'), dtype=('i4','S200','S25', 'S350')) 
 
+    # this will contain a global database of all exposures 
     exposures = Table(names=('Rootname','Target Name', 'RA','DEC','PropID','PI Name','Detector','Segment',\
         'LP','Grating', 'Cenwave','FPPOS','Exptime','Nevents','Extended','Date','Target Description'),   
-        dtype=('S20','S35','f4','f4','I5','S20','S4','S5','S2','S10','S10','I2','f10','f8','S4','S12','S200'))   # this will contain a global database of all exposures 
+        dtype=('S20','S35','f4','f4','I5','S20','S4','S5','S2','S10','S10','I2','f10','f8','S4','S12','S200'))
 
 
     #### set up the master "header table" 
@@ -126,22 +119,28 @@ def scrape_headers(targets):
                 print 'Median SN for ', targname, ' = ', median_sn 
                 
                 if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp1.fits')): 
-                    download_string = download_string+'  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp1.fits">LP1</a> | '
+                    download_string = download_string  + \
+                                '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp1.fits">LP1</a> | '
                 else: 
-                    download_string = download_string+'  '+'. . . .  | ' 
+                    download_string = download_string+'  ' + \
+                                '. . . .  | ' 
                 if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp2.fits')): 
-                    download_string = download_string+'  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp2.fits">LP2</a> | '
+                    download_string = download_string + \
+                                '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp2.fits">LP2</a> | '
                 else: 
-                    download_string = download_string+'  '+'. . . .  | ' 
+                    download_string = download_string + \
+                                '  '+'. . . .  | ' 
                 if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp3.fits')): 
-                    download_string = download_string+'  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp3.fits">LP3</a>   '
+                    download_string = download_string + \
+                                '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp3.fits">LP3</a>   '
                 else: 
                     download_string = download_string+'  '+'. . . .  ' 
             else: 
                 download_string = '. . . | . . . | . . . | . . . ' 
 
             print """
-            targname, 'DOWNLOAD_STRING', download_string
+            """,targname,"""DOWNLOAD_STRING
+            """, download_string,"""
             """
 
             sample_webtable.add_row([number,targname_urlstring,ra, dec,n_exp_string,str.split(targdesc,';')[0],targdesc,simbad_string, mast_string, median_sn, fuv_m_quicklook_urlstring, fuv_l_quicklook_urlstring, download_string]) 
@@ -151,10 +150,16 @@ def scrape_headers(targets):
             targets.add_row([1,targname,str.split(targdesc,';')[0], targdesc]) 
 
             dataset_list = glob.glob(os.path.join('.', '*x1d.fits'))
-            print "Making Exposure Catalog: " , filelist 
- 
-            exposure_cat = Table(names=('Flag', 'Rootname','Target Name', 'RA','DEC','PropID','PI Name','Detector','Segment','LP','Grating', 'Cenwave','FPPOS','Exptime','Nevents','Extended','Date','Target Description'),   
-                dtype=('I3', 'S20','S35','f4','f4','I5','S20','S4','S5','S2','S10','S10','I2','f10','f8','S4','S12','S200'))   # this contains database of all exposures for this target 
+            print "Making Exposure Catalog: " , filelist
+            
+            # exposure_cat contains database of all exposures for this target 
+            exposure_cat = Table(\
+                names=('Flag', 'Rootname','Target Name', 'RA','DEC','PropID',\
+                       'PI Name','Detector','Segment','LP','Grating', 'Cenwave','FPPOS',\
+                       'Exptime','Nevents','Extended','Date','Target Description'),   
+                dtype=('I3', 'S20','S35','f4','f4','I5',\
+                       'S20','S4','S5','S2','S10','S10','I2',\
+                       'f10','f8','S4','S12','S200'))
 
             for filename in filelist:
                 hdulist = fits.open(filename) 
@@ -166,7 +171,8 @@ def scrape_headers(targets):
                 else: 
                      exposure_cat.add_row([1, hdr0['ROOTNAME'], hdr0['TARGNAME'], hdr0['RA_TARG'], hdr0['DEC_TARG'], \
                         hdr0['PROPOSID'], hdr0['PR_INV_L'], hdr0['DETECTOR'], hdr0['SEGMENT'], hdr0['LIFE_ADJ'],  \
-                    hdr0['OPT_ELEM'], hdr0['CENWAVE'], hdr0['FPPOS'], hdr1['EXPTIME'], hdr1['NEVENTS'], hdr0['EXTENDED'], hdr1['DATE-OBS'], hdr0['TARDESCR']] )  
+                        hdr0['OPT_ELEM'], hdr0['CENWAVE'], hdr0['FPPOS'], hdr1['EXPTIME'], hdr1['NEVENTS'], \
+                        hdr0['EXTENDED'], hdr1['DATE-OBS'], hdr0['TARDESCR']] )  
 
                 if (False): 
                     for key in ["HISTORY", "COMMENT",""]: 
@@ -183,8 +189,8 @@ def scrape_headers(targets):
                     total_number_of_headers = total_number_of_headers + 1 
                     print 'TOTAL NUMBER OF HEADERS : ', total_number_of_headers 
 
-            ascii.write(exposure_cat, 'all_exposures.txt')                             # write out the exposures for this target by itself 
-            exposure_cat.write('all_exposures.html', format='jsviewer')             # write out the exposures for this target by itself 
+            ascii.write(exposure_cat, 'all_exposures.txt')  # write out the exposures for this target by itself 
+            exposure_cat.write('all_exposures.html', format='jsviewer') # write out the exposures for this target by itself 
             print "ALL EXPOSURES"   
             print exposure_cat 
 
@@ -198,12 +204,12 @@ def scrape_headers(targets):
 
     sample_fitstable.write(canonical_filename+'_sample.fits', format='fits', overwrite=True) 
     sample_webtable.write(canonical_filename+'_websample.fits', format='fits', overwrite=True) 
-    sample_webtable.write('sample_webtable.temp',format='jsviewer') 
-    sample_webtable.write(canonical_filename+'_sample_webtable.txt',format='ascii') 
+    sample_webtable.write('sample_webtable.temp', format='jsviewer') 
+    sample_webtable.write(canonical_filename+'_sample_webtable.txt' ,format='ascii') 
     os.system('sed "s/&lt;/</g" sample_webtable.temp | sed "s/&gt;/>/g" > '+canonical_filename+'_sample.html') 
     os.system('rm sample_webtable.temp')
 
-    targets.write(canonical_filename+'.list',format='ascii.fixed_width', delimiter=',') 
+    targets.write(canonical_filename+'.info',format='ascii.fixed_width', delimiter=',') 
 
     exposures.write(canonical_filename+'_exposures.fits', format='fits', overwrite=True) 
     exposures.write(canonical_filename+'_exposures.html',format='jsviewer') 
@@ -221,9 +227,7 @@ def scrape_headers(targets):
 
 if __name__ == "__main__":
     args = parse_args()
-    # targets = ( "qso_absorber" , 1 ) 
-    # clobber = 1
-    targets = (args.filename, args.clobber)
+    targets = args.filename
     
     scrape_headers(targets)
     sys.exit("""

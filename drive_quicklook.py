@@ -15,9 +15,11 @@ def parse_args():
     '''
     Parse command line arguments.  Returns args object.
     '''
-    parser = argparse.ArgumentParser(description="makes quicklooks for everything in 'filename.canonical' file")
-    parser.add_argument('filename', metavar='canonical', type=str, action='store',
-                        help='filename.canonical is the file to be read in')
+    parser = argparse.ArgumentParser(description="makes quicklooks for everything in 'targets.list' file")
+    parser.add_argument('targets', metavar='list', type=str, action='store',
+                        help="""targets.list is the file to be read in;
+                              first column = flag (0,1) if target is to be used,
+                              second column = target/directory name""")
 
     parser.add_argument('--clobber', dest='clobber', action='store_true')
     parser.add_argument('--no-clobber', dest='clobber', action='store_false')
@@ -30,10 +32,9 @@ def parse_args():
 
 def drive_quicklook(targets): 
     clobber = targets[1]
-    canonical = ascii.read(targets[0]+'.canonical') 
-    print canonical['col1'] 
-    print canonical['col2'] 
-    dirlist = canonical['col2'][np.where(canonical['col1'] == 1)]
+    canonical = ascii.read(targets[0]+'.list') 
+    print canonical
+    dirlist = canonical['targname'][np.where(canonical['flag'] == 1)]
     print "dirlist in driver" 
     print dirlist 
     print 'clobber ', clobber 
