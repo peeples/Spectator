@@ -204,8 +204,17 @@ def get_quick_look():
       
 #-----------------------------------------------------------------------------------------------------
 
+def smooth_spectrum(method, values, weights, scale):
+    ## this theoretically allows users to choose if they want binning, Guassian smoothing, or moving average
+    ## of course I only have moving average so far soooo.....:
+    smooth = movingaverage(values, weights, scale)
 
-def movingaverage(values,weights,window):
+    return smooth
+      
+#-----------------------------------------------------------------------------------------------------
+
+
+def movingaverage(values, weights, window):
     indices = np.where(weights > 0)
     mvavg = np.convolve(values[indices], np.ones(window)/window,'same')                    
     return mvavg
@@ -228,23 +237,23 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
     if np.asarray(np.shape(np.shape(flux))) > 1:
         for i in range(np.shape(flux)[0]):
             indices = np.where(wgt[i] > 0)
-            f = movingaverage(flux[i], wgt[i], smooth)
+            f = smooth_spectrum(1, flux[i], wgt[i], smooth)
             wave = wavelength[i][indices]
             ax.step(wave, f, lw=1, color='black')
     else:
         indices = np.where(wgt > 0)
-        f = movingaverage(flux, wgt, smooth)
+        f = smooth_spectrum(1, flux, wgt, smooth)
         wave = wavelength[indices]
         ax.step(wave, f, lw=1, color='black')
     if "error" in kwargs:
         if np.asarray(np.shape(np.shape(flux))) > 1:
             for i in range(np.shape(flux)[0]):
                 indices = np.where(wgt[i] > 0)
-                e = movingaverage(error[i], wgt[i], smooth)
+                e = smooth_spectrum(1, error[i], wgt[i], smooth)
                 wave = wavelength[i][indices]
                 ax.step(wave, e, lw=1, color='grey', alpha=0.6)
         else:
-            e = movingaverage(error, wgt, smooth)
+            e = smooth_spectrum(1, error, wgt, smooth)
             ax.step(wave, e, lw=1, color='grey', alpha=0.6)
         for w in range(np.shape(window)[0]):
             indices = np.where((wgt > 0) & (wavelength > window[w][0]) & (wavelength < window[w][1]))
@@ -270,22 +279,22 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
         if np.asarray(np.shape(np.shape(overflux))) > 1:
             for i in range(np.shape(overflux)[0]):
                 indices = np.where(overwgt[i] > 0)
-                f = movingaverage(overflux[i], overwgt[i], smooth)
+                f = smooth_spectrum(1, overflux[i], overwgt[i], smooth)
                 overwave = overwavelength[i][indices]
                 print "plot here", i
                 ax.step(overwave, f, lw=1, color=overcolor, zorder=1)
             if "overerror" in kwargs:
                 for i in range(np.shape(overflux)[0]):
-                    e = movingaverage(overerror[i], overwgt[i], smooth)
+                    e = smooth_spectrum(1, overerror[i], overwgt[i], smooth)
                     ax.step(overwave, e, lw=1, color=overcolor, zorder=10, alpha=0.2)
         else:
             print "or plot here"
             indices = np.where(overwgt > 0)
-            f = movingaverage(overflux, overwgt, smooth)
+            f = smooth_spectrum(1, overflux, overwgt, smooth)
             overwave = overwavelength[indices]
             ax.step(overwave, f, lw=1, color=overcolor, zorder=2)
             if "overerror" in kwargs:
-                e = movingaverage(overerror, overwgt, smooth)
+                e = smooth_spectrum(1, overerror, overwgt, smooth)
                 ax.step(overwave, e, lw=1, color=overcolor, zorder=10, alpha=0.2)
 
     plt.xlim(wavemin, wavemax)
@@ -295,13 +304,8 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
     plt.ylabel(r'flux [erg / s / cm$^2/$ \AA]', fontsize=20)
     plt.xlabel(r'wavelength [\AA]',fontsize=20)
     plt.tight_layout()
-    if 'full' in labeltext: 
-        ax.add_patch(patches.Rectangle((0.705,0.90), 0.290, 0.08, transform=ax.transAxes,facecolor='#ffffff',zorder=14, linewidth=0.3)) 
-        plt.text(0.99, 0.92, labeltext, fontsize=16, transform=ax.transAxes, horizontalalignment='right', color='black', zorder=15)
-    else: 
-        ax.add_patch(patches.Rectangle((0.80,0.80), 0.195, 0.18, transform=ax.transAxes,facecolor='#ffffff',zorder=14, linewidth=0.3)) 
-        plt.text(0.99, 0.82, labeltext, fontsize=16, transform=ax.transAxes, horizontalalignment='right', color='black', zorder=15)
-
+    plt.text(0.99, 0.92, labeltext, fontsize=16, transform=ax.transAxes, horizontalalignment='right', color='black', bbox=dict(facecolor='white',linewidth=0.3), zorder=15)
+    
     if os.path.isfile(output_name):   os.system("rm -f " + output_name) 
     plt.savefig(output_name)
     plt.close(fig)

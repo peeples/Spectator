@@ -10,7 +10,7 @@ DESCRIPTION:
 import argparse
 import sys
 
-import drive_quicklook 
+import drive_quick_look 
 import scrape_headers
 
 
