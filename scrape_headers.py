@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
-from astropy.io import fits
+# from astropy.io import fits   ### can this be faster by using fitsio ?
+import fitsio
 from astropy.table import Table, vstack 
 from astropy.io import ascii
 import numpy as np
@@ -30,6 +31,7 @@ def scrape_headers(targets):
     print canonical
     dirlist = canonical['targname'][np.where(canonical['flag'] == 1)]
     print "dirlist in driver"
+
     print dirlist
     ### want to add functionality to have additional columns in canonical (redshift, magnitude) be printed to sample tables
 
@@ -48,21 +50,22 @@ def scrape_headers(targets):
         dtype=('S20','S35','f4','f4','I5','S20','S4','S5','S2','S10','S10','I2','f10','f8','S4','S12','S200'))
 
 
-    #### set up the master "header table" 
-    hdulist=fits.open('generic_x1d.fits')
-    h0=hdulist[0].header
-    for key in ["HISTORY", "COMMENT", ""]:
-        del h0[key]
-    names = sorted(h0.keys())
-    rows = [h0[k] for k in names]
-    header_table0 = Table(rows=[rows], names=names)
+    #### set up the master "header table"
+    ###### ---->>>>>> why does this have to be done each time ????? <<<<<---------
+    # generic = "generic_x1d.fits"
+    # hdr0 = fitsio.read_header(generic, 0) 
+    # hdr1 = fitsio.read_header(generic, 1)
+    # for key in ["HISTORY", "COMMENT", ""]:
+    #     del hdr0[key]
+    # names = sorted(hdr0.keys())
+    # rows = [hdr0[k] for k in names]
+    # header_table0 = Table(rows=[rows], names=names)
 
-    h1=hdulist[1].header
-    for key in ["HISTORY", "COMMENT", ""]:
-        del h1[key]
-    names = sorted(h1.keys())
-    rows = [h1[k] for k in names]
-    header_table1 = Table(rows=[rows], names=names)
+    # for key in ["HISTORY", "COMMENT", ""]:
+    #     del hdr1[key]
+    # names = sorted(hdr1.keys())
+    # rows = [hdr1[k] for k in names]
+    # header_table1 = Table(rows=[rows], names=names)
 
     counter = 1 
     total_number_of_headers = 0 
@@ -78,8 +81,7 @@ def scrape_headers(targets):
             print "There are ", nfiles, " exposures for target ", dirname 
 
             #### Grab the first file and create html page for the "sample_webtable" 
-            hdulist = fits.open(filelist[0])
-            webtable_row, fitstable_row, targetstable_row = get_webtable_info(hdulist, nfiles, counter)
+            webtable_row, fitstable_row, targetstable_row = get_webtable_info(filelist[0], nfiles, counter)
 
             sample_webtable.add_row(webtable_row) 
             sample_fitstable.add_row(fitstable_row)
@@ -108,116 +110,121 @@ def scrape_headers(targets):
     exposures.write(canonical_filename+'_exposures.fits', format='fits', overwrite=True) 
     exposures.write(canonical_filename+'_exposures.html',format='jsviewer') 
 
-    header_table0.write(canonical_filename+'_headers0.fits', format='fits', overwrite=True) 
-    header_table0.write(canonical_filename+'_headers0.html', format='jsviewer')
+    # header_table0.write(canonical_filename+'_headers0.fits', format='fits', overwrite=True) 
+    # header_table0.write(canonical_filename+'_headers0.html', format='jsviewer')
     
-    header_table1.write(canonical_filename+'_headers1.fits', format='fits', overwrite=True) 
-    header_table1.write(canonical_filename+'_headers1.html', format='jsviewer')
+    # header_table1.write(canonical_filename+'_headers1.fits', format='fits', overwrite=True) 
+    # header_table1.write(canonical_filename+'_headers1.html', format='jsviewer')
 
 
 
 #-----------------------------------------------------------------------------------------------------
 
-def get_webtable_info(hdulist, nfiles, counter):
+def get_webtable_info(filename, nfiles, counter):
+    hdr0 = fitsio.read_header(filename, 0) 
+    hdr1 = fitsio.read_header(filename, 1)
+
+    targname = hdr0['TARGNAME']
+    targdesc = hdr0['TARDESCR']
+    ra = hdr0['RA_TARG']
+    dec = hdr0['DEC_TARG']
+    print ra, dec, targname 
+
+    median_sn = -9.99 
     
-            hdr0 = hdulist[0].header
-            hdr1 = hdulist[1].header
+    targname_urlstring = '<a href="'+targname+'/'+targname+'_quicklook.html">'+targname+'</a>'
 
-            targname = hdr0['TARGNAME']
-            targdesc = hdr0['TARDESCR']
-            ra = hdr0['RA_TARG']
-            dec = hdr0['DEC_TARG']
-            print ra, dec, targname 
+    simbad_string = '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?CooDefinedFrames=none&CooEpoch=2000&Coord='+str(ra)+'d'+str(dec)+'d&submit=submit%20query&Radius.unit=arcsec&CooEqui=2000&CooFrame=FK5&Radius=4"> SIMBAD </a>'  
 
-            median_sn = -9.99 
-        
-            targname_urlstring = '<a href="'+targname+'/'+targname+'_quicklook.html">'+targname+'</a>'
+    mast_string = '<a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html?searchQuery='+str(ra)+','+str(dec)+'"> MAST  </a>'  
+    print mast_string 
 
-            simbad_string = '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?CooDefinedFrames=none&CooEpoch=2000&Coord='+str(ra)+'d'+str(dec)+'d&submit=submit%20query&Radius.unit=arcsec&CooEqui=2000&CooFrame=FK5&Radius=4"> SIMBAD </a>'  
+    n_exp_string = '<a href="'+targname+'/all_exposures.html">'+str(nfiles)+'</a>' 
 
-            mast_string = '<a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html?searchQuery='+str(ra)+','+str(dec)+'"> MAST  </a>'  
-            print mast_string 
+    fuv_m_quicklook_urlstring = '...' 
+    fuv_l_quicklook_urlstring = '...' 
+    if (os.path.exists(hdr0['targname']+'_coadd_final_all.png')): 
+        fuv_m_quicklook_urlstring = '<a href="'+targname+'/'+targname+'_coadd_G130M_final_all.fits"><img height="40" src="'+targname+'/'+targname+'_coadd_final_all.png"></a>'
 
-            n_exp_string = '<a href="'+targname+'/all_exposures.html">'+str(nfiles)+'</a>' 
+    if (os.path.exists(hdr0['targname']+'_coadd_G140L_final_all.png')): 
+        fuv_l_quicklook_urlstring = '<a href="'+targname+'/'+targname+'_coadd_G140L_final_all.fits"><img height="40" src="'+targname+'/'+targname+'_coadd_G140L_final_all.png"></a>'
+        this_coadd = Table.read(targname+'_coadd_G140L_final_all.fits') 
+        i_good = np.where(this_coadd['FLUX'] > 0) 
+        median_sn = np.median(this_coadd['SN'][i_good]) 
+        print 'Median SN for ', targname, ' = ', median_sn 
 
-            fuv_m_quicklook_urlstring = '...' 
-            fuv_l_quicklook_urlstring = '...' 
-            if (os.path.exists(hdr0['targname']+'_coadd_final_all.png')): 
-                fuv_m_quicklook_urlstring = '<a href="'+targname+'/'+targname+'_coadd_G130M_final_all.fits"><img height="40" src="'+targname+'/'+targname+'_coadd_final_all.png"></a>'
+    if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_all.fits')): 
+        download_string = '<a href="'+targname+'/'+targname+'_coadd_G130M_final_all.fits">ALL</a> |'
 
-            if (os.path.exists(hdr0['targname']+'_coadd_G140L_final_all.png')): 
-                fuv_l_quicklook_urlstring = '<a href="'+targname+'/'+targname+'_coadd_G140L_final_all.fits"><img height="40" src="'+targname+'/'+targname+'_coadd_G140L_final_all.png"></a>'
-                this_coadd = Table.read(targname+'_coadd_G140L_final_all.fits') 
-                i_good = np.where(this_coadd['FLUX'] > 0) 
-                median_sn = np.median(this_coadd['SN'][i_good]) 
-                print 'Median SN for ', targname, ' = ', median_sn 
+        this_coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
+        i_good = np.where(this_coadd['FLUX'] > 0) 
+        median_sn = np.median(this_coadd['SN'][i_good]) 
+        print 'Median SN for ', targname, ' = ', median_sn 
+    
+        if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp1.fits')): 
+            download_string = download_string  + \
+            '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp1.fits">LP1</a> | '
+        else: 
+            download_string = download_string+'  ' + \
+            '. . . .  | ' 
+        if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp2.fits')): 
+            download_string = download_string + \
+            '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp2.fits">LP2</a> | '
+        else: 
+            download_string = download_string + \
+            '  '+'. . . .  | ' 
+        if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp3.fits')): 
+            download_string = download_string + \
+            '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp3.fits">LP3</a>   '
+        else: 
+            download_string = download_string+'  '+'. . . .  ' 
+    else: 
+        download_string = '. . . | . . . | . . . | . . . ' 
 
-            if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_all.fits')): 
-                download_string = '<a href="'+targname+'/'+targname+'_coadd_G130M_final_all.fits">ALL</a> |'
+    
+    print """
+    """,targname,"""DOWNLOAD_STRING
+    """, download_string,"""
+    """
 
-                this_coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
-                i_good = np.where(this_coadd['FLUX'] > 0) 
-                median_sn = np.median(this_coadd['SN'][i_good]) 
-                print 'Median SN for ', targname, ' = ', median_sn 
-                
-                if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp1.fits')): 
-                    download_string = download_string  + \
-                                '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp1.fits">LP1</a> | '
-                else: 
-                    download_string = download_string+'  ' + \
-                                '. . . .  | ' 
-                if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp2.fits')): 
-                    download_string = download_string + \
-                                '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp2.fits">LP2</a> | '
-                else: 
-                    download_string = download_string + \
-                                '  '+'. . . .  | ' 
-                if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp3.fits')): 
-                    download_string = download_string + \
-                                '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp3.fits">LP3</a>   '
-                else: 
-                    download_string = download_string+'  '+'. . . .  ' 
-            else: 
-                download_string = '. . . | . . . | . . . | . . . ' 
-
-                
-            print """
-            """,targname,"""DOWNLOAD_STRING
-            """, download_string,"""
-            """
-
-            webtable_row = [counter, targname_urlstring, ra, dec, n_exp_string, str.split(targdesc,';')[0],
-                            targdesc, simbad_string, mast_string, median_sn,
-                            fuv_m_quicklook_urlstring, fuv_l_quicklook_urlstring, download_string]
-            fitstable_row = [counter, targname, ra, dec, nfiles, str.split(targdesc,';')[0], targdesc, median_sn]
-            targetstable_row = [1,targname,str.split(targdesc,';')[0], targdesc]
-            return webtable_row, fitstable_row, targetstable_row
+    webtable_row = [counter, targname_urlstring, ra, dec, n_exp_string, str.split(targdesc,';')[0],
+        targdesc, simbad_string, mast_string, median_sn,
+        fuv_m_quicklook_urlstring, fuv_l_quicklook_urlstring, download_string]
+    fitstable_row = [counter, targname, ra, dec, nfiles, str.split(targdesc,';')[0], targdesc, median_sn]
+    targetstable_row = [1,targname,str.split(targdesc,';')[0], targdesc]
+    return webtable_row, fitstable_row, targetstable_row
 
 
 #-----------------------------------------------------------------------------------------------------
 
 def make_exposure_catalog(filelist):
-    # exposure_cat contains database of all exposures for this target 
+    # exposure_cat contains database of all exposures for this target
     exposure_cat = Table(\
-    names=('Flag', 'Rootname','Target Name', 'RA','DEC','PropID',\
-                'PI Name','Detector','Segment','LP','Grating', 'Cenwave','FPPOS',\
-                'Exptime','Nevents','Extended','Date','Target Description'),   
-            dtype=('I3', 'S20','S35','f4','f4','I5',\
-                   'S20','S4','S5','S2','S10','S10','I2',\
-                    'f10','f8','S4','S12','S200'))
+    names=('Flag', 'Rootname', 'Target Name', 'RA', 'DEC', 'PropID',\
+                'PI Name', 'Detector', 'Segment', 'LP', 'Grating', 'Cenwave', 'FPPOS',\
+                'Exptime', 'Nevents', 'Mean Flux', 'Median Flux', 'Extended', 'Date', 'Target Description'),   
+            dtype=('I3', 'S20', 'S35', 'f4', 'f4', 'I5',\
+                   'S20', 'S4', 'S5', 'S2', 'S10', 'S10', 'I2',\
+                    'f10', 'f8', 'f8', 'f8', 'S4', 'S12', 'S200'))
+
+
+    LYA_MIN = 1206 ## should this depend on M vs L grating?
+    LYA_MAX = 1226
 
     for filename in filelist:
-        hdulist = fits.open(filename) 
-        hdr0 = hdulist[0].header
-        hdr1 = hdulist[1].header
+        hdr0 = fitsio.read_header(filename, 0) 
+        data, hdr1 = fitsio.read(filename, ext=1, header=True) 
         print "Obtaining headers for :", filename 
-        if (np.shape(hdulist[1].data)[0] < 1):
+        if (np.shape(data)[0] < 1):
             print "no data:",filename
-        else: 
+        else:
+            indices = np.where((data["DQ_WGT"] > 0) & (data["DQ"] == 0) & ((data["WAVELENGTH"] > LYA_MAX) | (data["WAVELENGTH"] < LYA_MIN)))
+            
             exposure_cat.add_row([1, hdr0['ROOTNAME'], hdr0['TARGNAME'], hdr0['RA_TARG'], hdr0['DEC_TARG'], \
-            hdr0['PROPOSID'], hdr0['PR_INV_L'], hdr0['DETECTOR'], hdr0['SEGMENT'], hdr0['LIFE_ADJ'],  \
-            hdr0['OPT_ELEM'], hdr0['CENWAVE'], hdr0['FPPOS'], hdr1['EXPTIME'], hdr1['NEVENTS'], \
-            hdr0['EXTENDED'], hdr1['DATE-OBS'], hdr0['TARDESCR']] )  
+                hdr0['PROPOSID'], hdr0['PR_INV_L'], hdr0['DETECTOR'], hdr0['SEGMENT'], hdr0['LIFE_ADJ'],  \
+                hdr0['OPT_ELEM'], hdr0['CENWAVE'], hdr0['FPPOS'], hdr1['EXPTIME'], hdr1['NEVENTS'], \
+                np.mean(data["FLUX"][indices]), np.median(data['FLUX'][indices]), \
+                hdr0['EXTENDED'], hdr1['DATE-OBS'], hdr0['TARDESCR']] )  
 
             ## want a way to consolidate every header keyword for every exposure into single table / file,
             ## but this is really slow. method other than vstack?
@@ -240,7 +247,8 @@ def make_exposure_catalog(filelist):
     exposure_cat.write('all_exposures.html', format='jsviewer') # write out the exposures for this target by itself
 
     print "ALL EXPOSURES"   
-    print exposure_cat 
+    print exposure_cat
+    return exposure_cat
 
 
 #-----------------------------------------------------------------------------------------------------

@@ -1,9 +1,11 @@
 #! /usr/bin/env python
 
 from astropy.io import fits as f
+# import fitsio
 from astropy.table import Table
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
+from datetime import datetime
 import astropy.units as u
 import collections
 import scipy.io as scio
@@ -12,7 +14,7 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches 
+from matplotlib.ticker import ScalarFormatter, FormatStrFormatter
 import scipy.interpolate as sp
 import glob
 import os
@@ -80,8 +82,6 @@ def get_quick_look():
     outfile.write(addfig)
 
     if hdr['DETECTOR'] == 'FUV':
-        print "should be checking to see if FUV for when plotting lifetime position!!!"
-        print "gonna plot now anyhow"
         figname = "lifetime_position_histogram.png"
         plot_lifetime_position_histogram(t, figname, t_pid=t_pid, width=width)
         addfig = r"""<img src='"""+pathname+figname+r"""' style="width:600pix">"""
@@ -119,7 +119,7 @@ def get_quick_look():
             outfile.write(addfig)
 
     if np.size(time_flux) > 0: 
-        tf = Table(rows=time_flux, names=('time','flux','error','window'))
+        tf = Table(rows=time_flux, names=('mjd','flux','error','window'))
         plot_time_flux(tf, window=window, wc=wc)
         addfig = r"""<br><img src='"""+pathname+r"""time_flux.png' style="width:1200pix">"""
         outfile.write(addfig)
@@ -340,54 +340,90 @@ def get_default_windows():
 
 
 def get_default_pid_colors():
-    return ['purple','yellow','red','cyan','orange','green','blue','magenta','tan','grey','pink','maroon','aqua','brown','greenyellow','olive','thistle']
+    return ['purple','yellow','red','cyan','orange','green','blue','magenta','tan',
+            'grey','pink','maroon','aqua','brown','greenyellow','olive','thistle']
 
 
 #-----------------------------------------------------------------------------------------------------
 
 def get_demographics(dataset_list):
     print "getting the demographics"
-    LYA_MIN = 1206
-    LYA_MAX = 1226
-    demographics = []
+
+    # first, check if all_exposures.txt exists. if it does, read it in
+    if os.path.exists("all_exposures.txt"):
+        exposure_cat = ascii.read("all_exposures.txt")
+    else:
+        # if all_exposures does not exist, import scrape_headers and make it.
+        print "---> all_exposures.txt doesn't exist!!!!! so I'm going to make it now"
+        import scrape_headers
+        exposure_cat = scrape_headers.make_exposure_catalog(dataset_list)
+    
+    # if scrape_headers can't be found, do it the hard way.
+    if (False):
+        LYA_MIN = 1206 ## should this depend on M vs L grating?
+        LYA_MAX = 1226
+        demographics = []
+        ranges = []
+        for filename in dataset_list:
+            hdr = fitsio.read_header(filename, 0) 
+            data, hdr1 = fitsio.read(filename, ext=1, header=True) 
+            if (data == None):
+                print "no data:", filename
+                continue
+            if (np.shape(data['FLUX'])[0] == 0):
+                print np.shape(data['FLUX']), filename
+                continue
+            demographics.append((hdr['PROPOSID'], hdr['LINENUM'].split('.')[0], hdr['LINENUM'].split('.')[1], hdr['CENWAVE'], hdr['FPPOS'], hdr['LIFE_ADJ'], hdr['PR_INV_L'], hdr['ROOTNAME'], data['EXPTIME'][0]))
+            indices = np.where((data["DQ_WGT"] > 0) & (data["DQ"] == 0) & ((data["WAVELENGTH"] > LYA_MAX) | (data["WAVELENGTH"] < LYA_MIN)))
+            minwave = 1100 
+            maxwave = 1900 
+            maxflux = 1e-14 
+            if(np.shape(indices)[1] > 0):
+                if(hdr['OPT_ELEM'] == 'G140L'):
+                    minwave = 900.
+                    maxwave = 2160.
+                    maxflux = 5.0 * np.mean(data["FLUX"][indices])   # changed from max of flux by JT 072015 
+                if((hdr['OPT_ELEM'] == 'G130M') or (hdr['OPT_ELEM'] == 'G160M')): 
+                    minwave = 1100
+                    maxwave = 1900 
+                    maxflux = 3.0 * np.median(data["FLUX"][indices])   # changed from max of flux by JT 072015 
+                if hdr['DETECTOR'] == 'NUV': 
+                    minwave = 1700
+                    maxwave = 3000 
+                    maxflux = 3.0 * np.mean(data["FLUX"][indices])   # changed from max of flux by JT 072015 
+                ranges.append((minwave, maxwave, maxflux))
+            print "Incorporating minwave, maxwave, maxflux from:    ", filename, hdr['DETECTOR'], hdr['OPT_ELEM'], hdr['CENWAVE'], minwave, maxwave, maxflux 
+        t = Table(rows=demographics, names=('PID', 'Visit', 'expnum', 'cenwave', 'FPPOS', 'lp', 'PI_NAME', 'rootname', 'exptime'))
+        r = Table(rows=ranges, names=('minwave', 'maxwave', 'maxflux'), dtype=('f8', 'f8', 'f8'))
+
+
+    # now from the exposure_cat table, find the stuff needed for t and r to be returned
     ranges = []
-    for filename in dataset_list:
-        hdulist = f.open(filename)
-        hdr = hdulist[0].header
-        if hdr['DETECTOR'] != 'FUV':
-            print hdr['DETECTOR']
-#            continue
-        data = hdulist[1].data
-        if (hdulist[1].data == None):
-            print "no data:", filename
-            continue
-        if (np.shape(data['flux'])[0] == 0):
-            print np.shape(data['flux']), filename
-            continue
-        demographics.append((hdr['proposid'], hdr['linenum'].split('.')[0], hdr['linenum'].split('.')[1], hdr['cenwave'], hdr['fppos'], hdr['life_adj'], hdr['pr_inv_l'], hdr['rootname'], data['exptime'][0]))
-        indices = np.where((data["dq_wgt"] > 0) & (data["dq"] == 0) & ((data["wavelength"] > LYA_MAX) | (data["wavelength"] < LYA_MIN)))
-        minwave = 1100 
-        maxwave = 1900 
-        maxflux = 1e-14 
-        if(np.shape(indices)[1] > 0):
-            if(hdr['OPT_ELEM'] == 'G140L'):
+    demographics = []
+    for i in range(len(exposure_cat)):
+            demographics.append((exposure_cat['PropID'][i], exposure_cat['Cenwave'][i], exposure_cat['FPPOS'][i], exposure_cat['LP'][i], exposure_cat['PI Name'][i], exposure_cat['Rootname'][i], exposure_cat['Exptime'][i]))
+            minwave = 1100 
+            maxwave = 1900 
+            maxflux = 1e-14 
+            if(exposure_cat['Grating'][i] == 'G140L'):
                 minwave = 900.
                 maxwave = 2160.
-                maxflux = 5.0 * np.mean(data["flux"][indices])   # changed from max of flux by JT 072015 
-            if((hdr['OPT_ELEM'] == 'G130M') or (hdr['OPT_ELEM'] == 'G160M')): 
+                maxflux = 5.0 * exposure_cat['Mean Flux'][i]   # changed from max of flux by JT 072015 
+            if((exposure_cat['Grating'][i] == 'G130M') or (exposure_cat['Grating'][i] == 'G160M')): 
                 minwave = 1100
                 maxwave = 1900 
-                maxflux = 3.0 * np.median(data["flux"][indices])   # changed from max of flux by JT 072015 
-            if hdr['DETECTOR'] == 'NUV': 
+                maxflux = 3.0 * exposure_cat['Median Flux'][i] # changed from max of flux by JT 072015 
+            if exposure_cat['Detector'][i] == 'NUV': 
                 minwave = 1700
                 maxwave = 3000 
-                maxflux = 3.0 * np.mean(data["flux"][indices])   # changed from max of flux by JT 072015 
+                maxflux = 3.0 * exposure_cat['Mean Flux'][i]   # changed from max of flux by JT 072015 
             ranges.append((minwave, maxwave, maxflux))
-        print "Incorporating minwave, maxwave, maxflux from:    ", filename, hdr['detector'], hdr['opt_elem'], hdr['cenwave'], minwave, maxwave, maxflux 
-        hdulist.close()
-    t = Table(rows=demographics, names=('PID', 'Visit', 'expnum', 'cenwave', 'FPPOS', 'lp', 'PI_NAME', 'rootname', 'exptime'))
+
+    t = Table(rows=demographics, names=('PID', 'cenwave', 'FPPOS', 'lp', 'PI_NAME', 'rootname', 'exptime'))
     r = Table(rows=ranges, names=('minwave', 'maxwave', 'maxflux'), dtype=('f8', 'f8', 'f8'))
-    print "--------------------- THESE ARE THE DEMOGRAPHICS-------------------" 
+
+    
+    print "----------------------- THESE ARE THE DEMOGRAPHICS---------------------" 
     print t
     print r
     return t, r
@@ -554,26 +590,34 @@ def plot_time_flux(tf, **kwargs):
 
     lpmoves = [56131.0, 57062.0]  ## COS FUV lifetime position moves, 2012-07-23 and 2015-02-09
 
+    tf['date'] = Time(tf['mjd'].data,format='mjd').datetime
+    
     tf_w = tf.group_by('window')
     print tf_w
 
+    earliest = np.min(tf['date'])
+    latest = np.max(tf['date'])
+    
     fig = plt.figure(figsize=(18, 6), dpi=300)
     ax = fig.add_subplot(111)
-    for w in range(np.shape(tf_w.groups)[0]):
-        # print w,  np.shape(window)[0],  np.shape(wc),  np.shape(tf_w.groups)[0]
-        ax.plot(tf_w.groups[w]['time'], tf_w.groups[w]['flux'], color=wc[w])
-        ax.errorbar(tf_w.groups[w]['time'], tf_w.groups[w]['flux'], yerr=tf_w.groups[w]['error'], color=wc[w])
+    for w in range(np.shape(tf_w.groups.indices)[0]-1):
+        print w,  np.shape(window)[0],  np.shape(wc),  np.shape(tf_w.groups.indices)[0]
+        # ttt = Time(tf_w.groups[w]['mjd'].data,format='mjd').plot_date
+        ax.plot(tf_w.groups[w]['date'], tf_w.groups[w]['flux'], color=wc[w])
+        ##ax.plot_date(ttt, tf_w.groups[w]['flux'], color=wc[w])
+        ax.errorbar(tf_w.groups[w]['date'], tf_w.groups[w]['flux'], yerr=tf_w.groups[w]['error'], color=wc[w])
         labeltext = str(window[w][0])+'$<\lambda<$'+str(window[w][1])+'\AA'
-        ax.scatter(tf_w.groups[w]['time'], tf_w.groups[w]['flux'], s=50, color=wc[w], alpha=0.5, label=labeltext)
+        ax.scatter(tf_w.groups[w]['date'], tf_w.groups[w]['flux'], s=50, color=wc[w], alpha=0.5, label=labeltext)
     xr = np.array(ax.get_xlim())
     yr = np.array(ax.get_ylim())
     ax.plot([lpmoves[0], lpmoves[0]], [-1, 1], ls=':', color='k')
     ax.text(lpmoves[0], 0.85*yr[1], r"move to LP2", fontsize=12)
     ax.plot([lpmoves[1], lpmoves[1]], [-1, 1], ls=':', color='k')
     ax.text(lpmoves[1], 0.85*yr[1], r"move to LP3", fontsize=12)
-    lg = ax.legend(loc='upper left')
-    lg.draw_frame(False)
-    plt.xlabel('time [MJD]', fontsize=20)
+    ax.xaxis.set_major_formatter(FormatStrFormatter('%.6f'))
+    #lg = ax.legend(loc='upper left')
+    #lg.draw_frame(False)
+    plt.xlabel('date', fontsize=20)
     plt.ylabel(r'flux [erg/s/cm$^2$/\AA]', fontsize=20)
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)

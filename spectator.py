@@ -27,7 +27,7 @@ def parse_args():
                               first column = flag (0,1) if target is to be used,
                               second column = target/directory name""")
 
-    parser.add_argument('--clobber', dest='clobber', action='store_true')
+    parser.add_argument('--clobber', dest='clobber', action='store_true', help="default is no-clobber")
     parser.add_argument('--no-clobber', dest='clobber', action='store_false')
     parser.set_defaults(clobber=False)
 
