@@ -43,7 +43,7 @@ if __name__ == "__main__":
     targets = (args.targets, args.clobber)    
 
     scrape_headers.scrape_headers(args.targets)
-    drive_quicklook.drive_quicklook(targets)
+    drive_quick_look.drive_quick_look(targets)
 
     sys.exit("""
     

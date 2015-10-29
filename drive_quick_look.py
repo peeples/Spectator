@@ -22,7 +22,7 @@ def parse_args():
                               second column = target/directory name""")
 
     parser.add_argument('--clobber', dest='clobber', action='store_true')
-    parser.add_argument('--no-clobber', dest='clobber', action='store_false')
+    parser.add_argument('--no-clobber', dest='clobber', action='store_false', help="default is no clobber")
     parser.set_defaults(clobber=False)
 
     args = parser.parse_args()
