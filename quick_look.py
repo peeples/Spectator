@@ -112,7 +112,8 @@ def get_quick_look():
             """+str(hdr['primesi'])+"""/"""+str(hdr['opt_elem']) + """/"""+str(hdr['cenwave']) + """/FPPOS"""+str(hdr['fppos'])+"""
             """+ hdulist[1].header['date-obs']+""", Exptime = """ +str(int(data['exptime'][0]))+"""s"""
             time = np.average([hdulist[1].header['expstart'], hdulist[1].header['expend']])
-            time_flux = plot_spectrum(output_name, data['wavelength'], data['flux'], LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=data['error'], wgt=data['dq_wgt'], smooth=7, time=time, time_flux=time_flux)
+            time_flux = plot_spectrum(output_name, data['wavelength'], data['flux'], LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, \
+                                      window=window, wc=wc, labeltext=labeltext, error=data['error'], wgt=data['dq_wgt'], smooth=7, time=time, time_flux=time_flux)
 
             addfig = r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
             print "writing out file ", addfig 
@@ -590,7 +591,8 @@ def plot_time_flux(tf, **kwargs):
 
     lpmoves = [56131.0, 57062.0]  ## COS FUV lifetime position moves, 2012-07-23 and 2015-02-09
 
-    tf['date'] = Time(tf['mjd'].data,format='mjd').datetime
+    ## tf['date'] = Time(tf['mjd'].data,format='mjd').datetime
+    tf['date'] = Time(tf['mjd'].data,format='mjd').decimalyear
     
     tf_w = tf.group_by('window')
     print tf_w
