@@ -2,9 +2,9 @@
 
 '''
 AUTHOR: Molly Peeples
-DATE: 10/27/2015
+DATE: 10/29/2015
 NAME: spectator.py
-DESCRIPTION: 
+DESCRIPTION: gets demographics and makes quick look plots and tables for Hubble/COS data (optimized for FUV)
 '''
 
 import argparse
@@ -12,9 +12,6 @@ import sys
 
 import drive_quick_look 
 import scrape_headers
-
-
-
 
 def parse_args():
     '''
@@ -27,8 +24,8 @@ def parse_args():
                               first column = flag (0,1) if target is to be used,
                               second column = target/directory name""")
 
-    parser.add_argument('--clobber', dest='clobber', action='store_true', help="default is no-clobber")
-    parser.add_argument('--no-clobber', dest='clobber', action='store_false')
+    parser.add_argument('--clobber', dest='clobber', action='store_true')
+    parser.add_argument('--no-clobber', dest='clobber', action='store_false', help="default is no clobbering")
     parser.set_defaults(clobber=False)
 
     args = parser.parse_args()
@@ -47,7 +44,7 @@ if __name__ == "__main__":
 
     sys.exit("""
     
-    ~~~~~~~*~*~*~*~
-    ~~~~~~~*~*~*~*~  all done!!!! spectra are fun!
-    ~~~~~~~*~*~*~*~
+    ~~~~~~~*~*~*~*~~~~~~~~                                 ~*~*~*~*~~~~~~~~~~~~~
+    ~~~~~~~*~*~*~*~~~~~~~~  all done!!!! spectra are fun!  ~~~~~~~~~~~~~~~~~~~~~
+    ~~~~~~~*~*~*~*~~~~~~~~                                 ~*~*~*~*~~~~~~~~~~~~~
     """)

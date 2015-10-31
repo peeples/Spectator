@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 from astropy.io import fits as f
+from astropy.io import ascii
 # import fitsio
 from astropy.table import Table
 from astropy.time import Time
@@ -591,8 +592,8 @@ def plot_time_flux(tf, **kwargs):
 
     lpmoves = [56131.0, 57062.0]  ## COS FUV lifetime position moves, 2012-07-23 and 2015-02-09
 
-    ## tf['date'] = Time(tf['mjd'].data,format='mjd').datetime
-    tf['date'] = Time(tf['mjd'].data,format='mjd').decimalyear
+    tf['date'] = Time(tf['mjd'].data,format='mjd').datetime
+    ## tf['date'] = Time(tf['mjd'].data,format='mjd').decimalyear
     
     tf_w = tf.group_by('window')
     print tf_w
@@ -605,11 +606,11 @@ def plot_time_flux(tf, **kwargs):
     for w in range(np.shape(tf_w.groups.indices)[0]-1):
         print w,  np.shape(window)[0],  np.shape(wc),  np.shape(tf_w.groups.indices)[0]
         # ttt = Time(tf_w.groups[w]['mjd'].data,format='mjd').plot_date
-        ax.plot(tf_w.groups[w]['date'], tf_w.groups[w]['flux'], color=wc[w])
+        ax.plot(Time(tf_w.groups[w]['mjd'].data,format='mjd').datetime, tf_w.groups[w]['flux'], color=wc[w])
         ##ax.plot_date(ttt, tf_w.groups[w]['flux'], color=wc[w])
-        ax.errorbar(tf_w.groups[w]['date'], tf_w.groups[w]['flux'], yerr=tf_w.groups[w]['error'], color=wc[w])
+        ax.errorbar(Time(tf_w.groups[w]['mjd'].data,format='mjd').datetime, tf_w.groups[w]['flux'], yerr=tf_w.groups[w]['error'], color=wc[w])
         labeltext = str(window[w][0])+'$<\lambda<$'+str(window[w][1])+'\AA'
-        ax.scatter(tf_w.groups[w]['date'], tf_w.groups[w]['flux'], s=50, color=wc[w], alpha=0.5, label=labeltext)
+        ax.scatter(Time(tf_w.groups[w]['mjd'].data,format='mjd').datetime, tf_w.groups[w]['flux'], s=50, color=wc[w], alpha=0.5, label=labeltext)
     xr = np.array(ax.get_xlim())
     yr = np.array(ax.get_ylim())
     ax.plot([lpmoves[0], lpmoves[0]], [-1, 1], ls=':', color='k')
