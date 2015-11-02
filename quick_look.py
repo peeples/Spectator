@@ -2,7 +2,7 @@
 
 from astropy.io import fits as f
 from astropy.io import ascii
-# import fitsio
+import fitsio
 from astropy.table import Table
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
@@ -34,10 +34,10 @@ def get_quick_look():
     pathname = '' 
 
     #### Grab the first file and create html page
-    hdulist = f.open(dataset_list[0])
-    hdr = hdulist[0].header
-
-    targname = hdr['targname']
+    print " ----->>>>>>> right now reading in from fits file, should be gotten from all_exposures.txt !!!!!!"
+    hdr0 = fitsio.read_header(dataset_list[0], 0) 
+ 
+    targname = hdr0['targname']
     outfilename = targname + "_quicklook.html"
     exists = os.path.isfile(outfilename)
     if exists:
@@ -45,11 +45,11 @@ def get_quick_look():
         os.system(command)
     outfile = open(outfilename, "w")
 
-    coord = SkyCoord(ra=hdr['RA_TARG']*u.degree, dec=hdr['DEC_TARG']*u.degree)
+    coord = SkyCoord(ra=hdr0['RA_TARG']*u.degree, dec=hdr0['DEC_TARG']*u.degree)
     info = """<html>
     <head><h1 style="text-align:center;font-size:350%">"""+targname+"""</h1></head>
-    <body><p style="text-align:center;font-size=250%">"""+str(hdr['TARDESCR'])+"""<br>
-    &alpha; = """+str(hdr['RA_TARG'])+""", &delta; = """+str(hdr['DEC_TARG'])+""" ("""+coord.to_string('hmsdms')+""")</font></p>
+    <body><p style="text-align:center;font-size=250%">"""+str(hdr0['TARDESCR'])+"""<br>
+    &alpha; = """+str(hdr0['RA_TARG'])+""", &delta; = """+str(hdr0['DEC_TARG'])+""" ("""+coord.to_string('hmsdms')+""")</font></p>
     <hr />
     """
     outfile.write(info)
@@ -82,13 +82,13 @@ def get_quick_look():
     addfig = r"""<img src='"""+pathname+figname+r"""' style="width:600pix">"""
     outfile.write(addfig)
 
-    if hdr['DETECTOR'] == 'FUV':
+    if hdr0['DETECTOR'] == 'FUV':
         figname = "lifetime_position_histogram.png"
         plot_lifetime_position_histogram(t, figname, t_pid=t_pid, width=width)
         addfig = r"""<img src='"""+pathname+figname+r"""' style="width:600pix">"""
         outfile.write(addfig)
 
-    add_coadd = find_and_plot_coadds(hdr, pathname, LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, window=window, wc=wc)
+    add_coadd = find_and_plot_coadds(hdr0, pathname, LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, window=window, wc=wc)
     outfile.write(add_coadd)
         
     #### add legend
@@ -481,7 +481,7 @@ def plot_exptime_fppos_histogram(t, figname, **kwargs):
     colors = kwargs.get("colors", get_default_pid_colors())
     t_pid = kwargs.get("t_pid", t.group_by(['PID']))
     t_cen = kwargs.get("t_cen", t.group_by(['cenwave']))
-    bins = kwargs.get("bins", t_cen.groups.keys['cenwave'])
+    bins = kwargs.get("bins", np.array(t_cen.groups.keys['cenwave']))
     width = kwargs.get("width", 0.7)
 
     if len(bins) > 8:
