@@ -124,8 +124,8 @@ def get_webtable_info(filename, nfiles, counter):
     hdr0 = fitsio.read_header(filename, 0) 
     hdr1 = fitsio.read_header(filename, 1)
 
-    targname = hdr0['TARGNAME']
-    targdesc = hdr0['TARDESCR']
+    targname = hdr0['TARGNAME'].strip() 
+    targdesc = hdr0['TARDESCR'].strip() 
     ra = hdr0['RA_TARG']
     dec = hdr0['DEC_TARG']
     print ra, dec, targname 
@@ -143,17 +143,19 @@ def get_webtable_info(filename, nfiles, counter):
 
     fuv_m_quicklook_urlstring = '...' 
     fuv_l_quicklook_urlstring = '...' 
-    if (os.path.exists(hdr0['targname']+'_coadd_final_all.png')): 
+    print 'Is there another damn problem with the targname?', hdr0['targname'].strip(), 'what?' 
+    if (os.path.exists(hdr0['targname'].strip()+'_coadd_final_all.png')): 
         fuv_m_quicklook_urlstring = '<a href="'+targname+'/'+targname+'_coadd_G130M_final_all.fits"><img height="40" src="'+targname+'/'+targname+'_coadd_final_all.png"></a>'
 
-    if (os.path.exists(hdr0['targname']+'_coadd_G140L_final_all.png')): 
+    if (os.path.exists(hdr0['targname'].strip()+'_coadd_G140L_final_all.png')): 
         fuv_l_quicklook_urlstring = '<a href="'+targname+'/'+targname+'_coadd_G140L_final_all.fits"><img height="40" src="'+targname+'/'+targname+'_coadd_G140L_final_all.png"></a>'
         this_coadd = Table.read(targname+'_coadd_G140L_final_all.fits') 
         i_good = np.where(this_coadd['FLUX'] > 0) 
         median_sn = np.median(this_coadd['SN'][i_good]) 
         print 'Median SN for ', targname, ' = ', median_sn 
 
-    if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_all.fits')): 
+    if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_all.fits')): 
+        print 'I found a coadd for G130M LP=ALL and will plot it. . . ' 
         download_string = '<a href="'+targname+'/'+targname+'_coadd_G130M_final_all.fits">ALL</a> |'
 
         this_coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
@@ -161,19 +163,22 @@ def get_webtable_info(filename, nfiles, counter):
         median_sn = np.median(this_coadd['SN'][i_good]) 
         print 'Median SN for ', targname, ' = ', median_sn 
     
-        if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp1.fits')): 
+        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp1.fits')): 
+            print 'I found a coadd for G130M LP=1' 
             download_string = download_string  + \
             '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp1.fits">LP1</a> | '
         else: 
             download_string = download_string+'  ' + \
             '. . . .  | ' 
-        if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp2.fits')): 
+        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp2.fits')): 
+            print 'I found a coadd for G130M LP=2' 
             download_string = download_string + \
             '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp2.fits">LP2</a> | '
         else: 
             download_string = download_string + \
             '  '+'. . . .  | ' 
-        if (os.path.exists(hdr0['targname']+'_coadd_G130M_final_lp3.fits')): 
+        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp3.fits')): 
+            print 'I found a coadd for G130M LP=3' 
             download_string = download_string + \
             '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp3.fits">LP3</a>   '
         else: 
@@ -204,7 +209,7 @@ def make_exposure_catalog(filelist):
                 'PI Name', 'Detector', 'Segment', 'LP', 'Grating', 'Cenwave', 'FPPOS',\
                 'Exptime', 'Nevents', 'Mean Flux', 'Median Flux', 'Extended', 'Date', 'Target Description'),   
             dtype=('I3', 'S20', 'S35', 'f4', 'f4', 'I5',\
-                   'S20', 'S4', 'S5', 'S2', 'S10', 'S10', 'I2',\
+                   'S20', 'S4', 'S5', 'S2', 'S10', 'I4', 'I2',\
                     'f10', 'f8', 'f8', 'f8', 'S4', 'S12', 'S200'))
 
 
@@ -218,13 +223,14 @@ def make_exposure_catalog(filelist):
         if (np.shape(data)[0] < 1):
             print "no data:",filename
         else:
+            hdr0['TARGNAME'] = hdr0['TARGNAME'].strip() 
             indices = np.where((data["DQ_WGT"] > 0) & (data["DQ"] == 0) & ((data["WAVELENGTH"] > LYA_MAX) | (data["WAVELENGTH"] < LYA_MIN)))
             
-            exposure_cat.add_row([1, hdr0['ROOTNAME'], hdr0['TARGNAME'], hdr0['RA_TARG'], hdr0['DEC_TARG'], \
-                hdr0['PROPOSID'], hdr0['PR_INV_L'], hdr0['DETECTOR'], hdr0['SEGMENT'], hdr0['LIFE_ADJ'],  \
-                hdr0['OPT_ELEM'], hdr0['CENWAVE'], hdr0['FPPOS'], hdr1['EXPTIME'], hdr1['NEVENTS'], \
+            exposure_cat.add_row([1, hdr0['ROOTNAME'].strip(), hdr0['TARGNAME'].strip(), hdr0['RA_TARG'], hdr0['DEC_TARG'], \
+                hdr0['PROPOSID'], hdr0['PR_INV_L'].strip(), hdr0['DETECTOR'].strip(), hdr0['SEGMENT'].strip(), hdr0['LIFE_ADJ'],  \
+                hdr0['OPT_ELEM'].strip(), hdr0['CENWAVE'], hdr0['FPPOS'], hdr1['EXPTIME'], hdr1['NEVENTS'], \
                 np.mean(data["FLUX"][indices]), np.median(data['FLUX'][indices]), \
-                hdr0['EXTENDED'], hdr1['DATE-OBS'], hdr0['TARDESCR']] )  
+                hdr0['EXTENDED'].strip(), hdr1['DATE-OBS'].strip(), hdr0['TARDESCR'].strip()] )  
 
             ## want a way to consolidate every header keyword for every exposure into single table / file,
             ## but this is really slow. method other than vstack?
