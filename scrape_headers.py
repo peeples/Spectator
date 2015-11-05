@@ -16,7 +16,7 @@ def parse_args():
     Parse command line arguments.  Returns args object.
     '''
     parser = argparse.ArgumentParser(description="scrapes headers for everything in 'filename.list' file")
-    parser.add_argument('filename', metavar='canonical', type=str, action='store',
+    parser.add_argument('filename', metavar='filename', type=str, action='store',
                         help='filename.list is the file to be read in')
 
     args = parser.parse_args()
@@ -81,18 +81,19 @@ def scrape_headers(targets):
             print "There are ", nfiles, " exposures for target ", dirname 
 
             #### Grab the first file and create html page for the "sample_webtable" 
-            webtable_row, fitstable_row, targetstable_row = get_webtable_info(filelist[0], nfiles, counter)
+            if nfiles > 0:			### if there are no files, then this target was aliased or something else happened and you won't be using it. 
+                webtable_row, fitstable_row, targetstable_row = get_webtable_info(filelist[0], nfiles, counter)
 
-            sample_webtable.add_row(webtable_row) 
-            sample_fitstable.add_row(fitstable_row)
-            targets.add_row(targetstable_row) 
+                sample_webtable.add_row(webtable_row) 
+                sample_fitstable.add_row(fitstable_row)
+                targets.add_row(targetstable_row) 
 
-            dataset_list = glob.glob(os.path.join('.', '*x1d.fits'))
-            print "Making Exposure Catalog: " , filelist
+                dataset_list = glob.glob(os.path.join('.', '*x1d.fits'))
+                print "Making Exposure Catalog: " , filelist
   
-            make_exposure_catalog(filelist)
+                make_exposure_catalog(filelist)
 
-            counter = counter + 1 
+                counter = counter + 1 
 
             os.chdir('..')          # go back to "datapile" 
 
@@ -132,23 +133,23 @@ def get_webtable_info(filename, nfiles, counter):
 
     median_sn = -9.99 
     
-    targname_urlstring = '<a href="'+targname+'/'+targname+'_quicklook.html">'+targname+'</a>'
+    targname_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_quicklook.html">'+targname+'</a>'
 
     simbad_string = '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?CooDefinedFrames=none&CooEpoch=2000&Coord='+str(ra)+'d'+str(dec)+'d&submit=submit%20query&Radius.unit=arcsec&CooEqui=2000&CooFrame=FK5&Radius=4"> SIMBAD </a>'  
 
     mast_string = '<a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html?searchQuery='+str(ra)+','+str(dec)+'"> MAST  </a>'  
     print mast_string 
 
-    n_exp_string = '<a href="'+targname+'/all_exposures.html">'+str(nfiles)+'</a>' 
+    n_exp_string = '<a href="../datapile/'+targname+'/all_exposures.html">'+str(nfiles)+'</a>' 
 
     fuv_m_quicklook_urlstring = '...' 
     fuv_l_quicklook_urlstring = '...' 
     print 'Is there another damn problem with the targname?', hdr0['targname'].strip(), 'what?' 
     if (os.path.exists(hdr0['targname'].strip()+'_coadd_final_all.png')): 
-        fuv_m_quicklook_urlstring = '<a href="'+targname+'/'+targname+'_coadd_G130M_final_all.fits"><img height="40" src="'+targname+'/'+targname+'_coadd_final_all.png"></a>'
+        fuv_m_quicklook_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_all.fits"><img height="40" src="../datapile/'+targname+'/'+targname+'_coadd_final_all.png"></a>'
 
     if (os.path.exists(hdr0['targname'].strip()+'_coadd_G140L_final_all.png')): 
-        fuv_l_quicklook_urlstring = '<a href="'+targname+'/'+targname+'_coadd_G140L_final_all.fits"><img height="40" src="'+targname+'/'+targname+'_coadd_G140L_final_all.png"></a>'
+        fuv_l_quicklook_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.fits"><img height="40" src="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.png"></a>'
         this_coadd = Table.read(targname+'_coadd_G140L_final_all.fits') 
         i_good = np.where(this_coadd['FLUX'] > 0) 
         median_sn = np.median(this_coadd['SN'][i_good]) 
@@ -156,7 +157,7 @@ def get_webtable_info(filename, nfiles, counter):
 
     if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_all.fits')): 
         print 'I found a coadd for G130M LP=ALL and will plot it. . . ' 
-        download_string = '<a href="'+targname+'/'+targname+'_coadd_G130M_final_all.fits">ALL</a> |'
+        download_string = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_all.fits">ALL</a> |'
 
         this_coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
         i_good = np.where(this_coadd['FLUX'] > 0) 
@@ -166,21 +167,21 @@ def get_webtable_info(filename, nfiles, counter):
         if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp1.fits')): 
             print 'I found a coadd for G130M LP=1' 
             download_string = download_string  + \
-            '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp1.fits">LP1</a> | '
+            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_lp1.fits">LP1</a> | '
         else: 
             download_string = download_string+'  ' + \
             '. . . .  | ' 
         if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp2.fits')): 
             print 'I found a coadd for G130M LP=2' 
             download_string = download_string + \
-            '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp2.fits">LP2</a> | '
+            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_lp2.fits">LP2</a> | '
         else: 
             download_string = download_string + \
             '  '+'. . . .  | ' 
         if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp3.fits')): 
             print 'I found a coadd for G130M LP=3' 
             download_string = download_string + \
-            '  '+'<a href="'+targname+'/'+targname+'_coadd_G130M_final_lp3.fits">LP3</a>   '
+            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_lp3.fits">LP3</a>   '
         else: 
             download_string = download_string+'  '+'. . . .  ' 
     else: 
@@ -212,7 +213,24 @@ def make_exposure_catalog(filelist):
                    'S20', 'S4', 'S5', 'S2', 'S10', 'I4', 'I2',\
                     'f10', 'f8', 'f8', 'f8', 'S4', 'S12', 'S200'))
 
+    if len(filelist) == 0:
+        return []
 
+                    
+    ## does alias.txt exist?
+    alias_file = "alias.txt"
+    if (os.path.exists(alias_file)):
+        af = open(alias_file, 'r')
+        targname = af.readline()
+        af.close()
+    else:
+        print "---->>>> make_expsoure_catalog can't find ",alias_file,"!!!!! making one instead.....  <<<<----------"
+        hdr0 = fitsio.read_header(filelist[0], 0) 
+        targname = hdr0['TARGNAME'].strip()
+        af = open(alias_file, 'w')
+        af.write(targname)
+        af.close()
+                    
     LYA_MIN = 1206 ## should this depend on M vs L grating?
     LYA_MAX = 1226
 
@@ -225,8 +243,12 @@ def make_exposure_catalog(filelist):
         else:
             hdr0['TARGNAME'] = hdr0['TARGNAME'].strip() 
             indices = np.where((data["DQ_WGT"] > 0) & (data["DQ"] == 0) & ((data["WAVELENGTH"] > LYA_MAX) | (data["WAVELENGTH"] < LYA_MIN)))
+            if hdr0['DETECTOR'].strip() == "FUV":
+                flag = 1
+            else:
+                flag = 0
             
-            exposure_cat.add_row([1, hdr0['ROOTNAME'].strip(), hdr0['TARGNAME'].strip(), hdr0['RA_TARG'], hdr0['DEC_TARG'], \
+            exposure_cat.add_row([flag, hdr0['ROOTNAME'].strip(), hdr0['TARGNAME'].strip(), hdr0['RA_TARG'], hdr0['DEC_TARG'], \
                 hdr0['PROPOSID'], hdr0['PR_INV_L'].strip(), hdr0['DETECTOR'].strip(), hdr0['SEGMENT'].strip(), hdr0['LIFE_ADJ'],  \
                 hdr0['OPT_ELEM'].strip(), hdr0['CENWAVE'], hdr0['FPPOS'], hdr1['EXPTIME'], hdr1['NEVENTS'], \
                 np.mean(data["FLUX"][indices]), np.median(data['FLUX'][indices]), \
@@ -255,6 +277,7 @@ def make_exposure_catalog(filelist):
     print "ALL EXPOSURES"   
     print exposure_cat
     return exposure_cat
+
 
 
 #-----------------------------------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 
 from astropy.io import fits as f
 from astropy.io import ascii
+
 import fitsio
 from astropy.table import Table
 from astropy.time import Time
@@ -27,17 +28,45 @@ def get_quick_look():
 
     window, wc = get_default_windows()
     
-    #### Find the x1d's in the directory
-    DATA_DIR = '.'
-    dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits'))
-    pathname = "file://"+os.getcwd()+"/"
+    #### Find the desired x1d's in the directory
+    # first, check if all_exposures.txt exists. if it does, read it in
+    if os.path.exists("all_exposures.txt"):
+        exposure_cat = ascii.read("all_exposures.txt")
+    else:
+        # if all_exposures does not exist, import scrape_headers and make it.
+        print "---> all_exposures.txt doesn't exist!!!!! so I'm going to make it now"
+        from scrape_headers import make_exposure_catalog as make_exposure_catalog
+        DATA_DIR = '.'
+        dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits'))
+        if len(dataset_list) == 0:
+            return "there's nothing here to make all_exposures with, trying to exit gracefully :-("
+        exposure_cat = make_exposure_catalog(dataset_list)
+    # second, cull for anything with Flag = 1
+    mask = exposure_cat['Flag'] == 1
+    exposure_cat = exposure_cat[mask]
+    dataset_list = []
+    for root in exposure_cat['Rootname']:
+        dataset_list.append(root+"_x1d.fits")
+    if len(exposure_cat) == 0:
+        return "the flags in all_exposures.txt told me to not do anything :-("
+        
+    # pathname = "file://"+os.getcwd()+"/"
     pathname = '' 
-
-    #### Grab the first file and create html page
-    print " ----->>>>>>> right now reading in from fits file, should be gotten from all_exposures.txt !!!!!!"
-    hdr0 = fitsio.read_header(dataset_list[0], 0) 
  
-    targname = hdr0['targname'].strip() 
+    ## does alias.txt exist?
+    alias_file = "alias.txt"
+    if (os.path.exists(alias_file)):
+        af = open(alias_file, 'r')
+        targname = af.readline()
+        af.close()
+    else:
+        print "---->>>> get_quick_look can't find "+alias_file+"!!!!! making one instead.....  <<<<----------"
+        hdr0 = fitsio.read_header(dataset_list[0], 0) 
+        targname = hdr0['TARGNAME'].strip()
+        af = open(alias_file, 'w')
+        af.write(targname)
+        af.close()
+
     outfilename = targname + "_quicklook.html"
 
     exists = os.path.isfile(outfilename)
@@ -46,11 +75,14 @@ def get_quick_look():
         os.system(command)
     outfile = open(outfilename, "w")
 
-    coord = SkyCoord(ra=hdr0['RA_TARG']*u.degree, dec=hdr0['DEC_TARG']*u.degree)
+    ra = exposure_cat['RA'][0]
+    dec = exposure_cat['DEC'][0]
+    tardescr = exposure_cat['Target Description'][0]
+    coord = SkyCoord(ra=ra*u.degree, dec=dec*u.degree)
     info = """<html>
     <head><h1 style="text-align:center;font-size:350%">"""+targname+"""</h1></head>
-    <body><p style="text-align:center;font-size=250%">"""+str(hdr0['TARDESCR'])+"""<br>
-    &alpha; = """+str(hdr0['RA_TARG'])+""", &delta; = """+str(hdr0['DEC_TARG'])+""" ("""+coord.to_string('hmsdms')+""")</font></p>
+    <body><p style="text-align:center;font-size=250%">"""+tardescr+"""<br>
+    &alpha; = """+str(ra)+""", &delta; = """+str(dec)+""" ("""+coord.to_string('hmsdms')+""")</font></p>
     <hr />
     """
     outfile.write(info)
@@ -83,24 +115,23 @@ def get_quick_look():
     addfig = r"""<img src='"""+pathname+figname+r"""' style="width:600pix">"""
     outfile.write(addfig)
 
-    if hdr0['DETECTOR'] == 'FUV':
+    if (exposure_cat['Detector'] == 'FUV').any():
         figname = "lifetime_position_histogram.png"
         plot_lifetime_position_histogram(t, figname, t_pid=t_pid, width=width)
         addfig = r"""<img src='"""+pathname+figname+r"""' style="width:600pix">"""
         outfile.write(addfig)
 
-    add_coadd = find_and_plot_coadds(hdr0, pathname, LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, window=window, wc=wc)
+    add_coadd = find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, window=window, wc=wc)
     outfile.write(add_coadd)
         
     #### add legend
-    info = """<p style="font-size=200%">Individual exposures<br>Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per unsmoothed pixel, in shaded window.</p>"""
+    info = """<p style="font-size=300%">Individual exposures<br>Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per unsmoothed pixel, in shaded window.</p>"""
     outfile.write(info)
 
     #### Loop through files and make plots!
     time_flux = []
-    targname = hdr0['targname'].strip() 
     for filename in dataset_list:
-        with f.open(filename) as hdulist:
+        with f.open(filename) as hdulist:   ##### want to change this to fitsio !!!!! ##### 
             hdr = hdulist[0].header
             data = hdulist[1].data
             if (hdulist[1].data == None):
@@ -122,6 +153,7 @@ def get_quick_look():
             print "writing out file ", addfig 
             outfile.write(addfig)
 
+
     if np.size(time_flux) > 0: 
         tf = Table(rows=time_flux, names=('mjd','flux','error','window'))
         plot_time_flux(tf, window=window, wc=wc)
@@ -130,30 +162,35 @@ def get_quick_look():
  
     outfile.write("</body></html>")
     outfile.close()
+    message = """
+    ~~~~~~~*~*~*~*~
+    ~~~~~~~*~*~*~*~  all done!!!! spectra are fun!
+    ~~~~~~~*~*~*~*~"""
 
 #-----------------------------------------------------------------------------------------------------
 
-def find_and_plot_coadds(hdr, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, MAX_FLUX, **kwargs):
+def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, MAX_FLUX, **kwargs):
     window = kwargs.get("window", get_default_windows()[0])
     wc = kwargs.get("wc", get_default_windows()[1])
     smooth = kwargs.get("smooth", 1)
 
+    print "--->>>> assuming that coadds are named with ",targname,"!!! find_and_plot_coadds won't find them if not !!!!! <<<<------"
+    
     #### coadd legend
     # --->>>> should only be added if there is actually a coadd , fix!!!!! <<<<------ 
     info = """<p style="font-size=200%">Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per unsmoothed pixel, in shaded window.</p>"""
-    
-    targname = hdr['TARGNAME'].strip()
+
     #### coadds????? ######
     addfig = ""
     coadd_exists = False
-    if(os.path.exists(targname+'_coadd_G130M_final_all.fits') or os.path.exists(hdr['targname']+'_coadd_G160M_final_all.fits')):
+    if(os.path.exists(targname+'_coadd_G130M_final_all.fits') or os.path.exists(targname+'_coadd_G160M_final_all.fits')):
         coadd_exists = True
         output_name = targname+'_coadd_final_all.png'
         labeltext = """full coadd of """+targname+""" COS/FUV M"""
         if (os.path.exists(targname+'_coadd_G130M_final_all.fits')): 
-            print '      LKSJDFLKSJDLFKSJDFLKSJDLFKSDJF' 
-            print '      YES I FOUND THE G130M coadd'
-            print '      LKSJDFLKSJDLFKSJDFLKSJDLFKSDJF' 
+            print '      ~~~ happy fuv data dance ~~~~' 
+            print '      YES!! I FOUND THE G130M coadd!'
+            print '      ~~~~ happy fuv data dance ~~~' 
             coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
             print targname+':  quick_look opened  ' + targname+'_coadd_G130M_final_all.fits for ', LAMBDA_MIN, LAMBDA_MAX 
       
@@ -212,7 +249,6 @@ def find_and_plot_coadds(hdr, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, MAX_FL
         output_name = targname+"_FUV_L_coadd.png"
         coadd = scio.readsav(targname+'_FUV_L_coadd.dat')
         print  'quick_look opened' + targname+'_FUV_L_coadd.dat'
-        d = Time(hdulist[1].header['expstart'], format='mjd')
         labeltext = """coadd of """+str(targname)+""" COS/FUV L"""
         plot_spectrum(output_name, coadd['wave'], coadd['flux'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['err'], smooth=7)
         addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
@@ -373,7 +409,9 @@ def get_demographics(dataset_list):
         print "---> all_exposures.txt doesn't exist!!!!! so I'm going to make it now"
         from scrape_headers import make_exposure_catalog as make_exposure_catalog
         exposure_cat = make_exposure_catalog(dataset_list)
-    
+    mask = exposure_cat['Flag'] == 1
+    exposure_cat = exposure_cat[mask]
+
     # if scrape_headers can't be found, do it the hard way.
     if (False):
         LYA_MIN = 1206 ## should this depend on M vs L grating?
@@ -649,8 +687,5 @@ def plot_time_flux(tf, **kwargs):
 #-----------------------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    get_quick_look()
-    sys.exit("""
-    ~~~~~~~*~*~*~*~
-    ~~~~~~~*~*~*~*~  all done!!!! spectra are fun!
-    ~~~~~~~*~*~*~*~""")
+    message = get_quick_look()
+    sys.exit(message)
