@@ -1,11 +1,9 @@
 #! /usr/bin/env python
 
-# from astropy.io import fits   ### can this be faster by using fitsio ?
 import fitsio
 from astropy.table import Table, vstack 
 from astropy.io import ascii
 import numpy as np
-import matplotlib.pyplot as plt
 import argparse
 import glob
 import os 
@@ -18,29 +16,39 @@ def parse_args():
     parser = argparse.ArgumentParser(description="scrapes headers for everything in 'filename.list' file")
     parser.add_argument('filename', metavar='filename', type=str, action='store',
                         help='filename.list is the file to be read in')
+    parser.add_argument('--altnames', metavar='altnames', type=str, default='blank', action='store',
+                        help='altnames is the file containing the NED names list')
+    parser.add_argument('--redshifts', metavar='redshifts', type=bool, default=False, action='store',
+                        help='do or do not include redshifts, default if not')
 
     args = parser.parse_args()
     return args
 
 #-----------------------------------------------------------------------------------------------------
 
-def scrape_headers(targets): 
+def scrape_headers(targets,altnames,redshifts): 
     canonical_filename = targets
     canonical = ascii.read(canonical_filename+'.list')
 
+    have_alt_names = False 
+    print 'altnames: ', altnames 
+    print 'redshifts: ', redshifts 
+    if altnames != 'blank': 
+       alt_namefile = altnames
+       altname_table = fitsio.read(alt_namefile, ext=1, header=True)[0] 
+       #simbad_table = fitsio.read(simbad_namefile, ext=1, header=True)[0] 
+       print 'Successfully opened the fits file with the alt names in it' 
+       have_alt_names = True 
+
     print canonical
     dirlist = canonical['targname'][np.where(canonical['flag'] == 1)]
-    print "dirlist in driver"
 
-    print dirlist
-    ### want to add functionality to have additional columns in canonical (redshift, magnitude) be printed to sample tables
+    sample_fitstable = Table(names=('Number','Target Name', 'RA','DEC','Nexp','Target Category', \
+        'Target Description','Alt Name','S/N (130)'), dtype=('i4','S200','f4','f4','I8','S20','S20','S30','f1')) 
 
-    sample_fitstable = Table(names=('Number','Target Name', 'RA','DEC','N_exposures','Target Category', \
-        'Target Description','S/N (130)'), dtype=('i4','S200','f4','f4','I8','S20','S20','f1')) 
-
-    sample_webtable = Table(names=('Number','Target Name', 'RA','DEC','N_exposures','Target Category', \
-        'Target Description','Simbad', 'MAST', 'S/N (130)', 'FUV M','FUV L', 'FUV M Download (by LP)'), \
-        dtype=('i4','S200','f4','f4','S240','S20','S20','S240','S240','f1','S250','S250','S350')) 
+    sample_webtable = Table(names=('Number','Target Name', 'RA','DEC','Nexp','Target Category', \
+        'Target Description','AltName','Redshift','MAST', 'S/N (130)', 'FUV M', 'M Download', 'FUV L','L Download'), \
+        dtype=('i4','S200','f4','f4','S240','S20','S20','S600','S5','S240','f1','S250','S350','S250','S350')) 
 
     targets = Table(names=('Flag','Target Name', 'Target Category', 'Target Description'), dtype=('i4','S200','S25', 'S350')) 
 
@@ -48,7 +56,6 @@ def scrape_headers(targets):
     exposures = Table(names=('Rootname','Target Name', 'RA','DEC','PropID','PI Name','Detector','Segment',\
         'LP','Grating', 'Cenwave','FPPOS','Exptime','Nevents','Extended','Date','Target Description'),   
         dtype=('S20','S35','f4','f4','I5','S20','S4','S5','S2','S10','S10','I2','f10','f8','S4','S12','S200'))
-
 
     #### set up the master "header table"
     ###### ---->>>>>> why does this have to be done each time ????? <<<<<---------
@@ -67,6 +74,8 @@ def scrape_headers(targets):
     # rows = [hdr1[k] for k in names]
     # header_table1 = Table(rows=[rows], names=names)
 
+    redshift_string = '. . . ' 
+
     counter = 1 
     total_number_of_headers = 0 
 
@@ -84,6 +93,15 @@ def scrape_headers(targets):
             if nfiles > 0:			### if there are no files, then this target was aliased or something else happened and you won't be using it. 
                 webtable_row, fitstable_row, targetstable_row = get_webtable_info(filelist[0], nfiles, counter)
 
+                if have_alt_names: 
+                    i_alt = np.where(altname_table[:]['Target Name'] == dirname)
+                    print 'Redshift = ', altname_table[int(i_alt[0])][12] 
+                    altname_string = altname_table[int(i_alt[0])][16] 
+
+                    redshift_string = str(altname_table[int(i_alt[0])][12]) 
+                    webtable_row[7] = altname_string 
+                    webtable_row[8] = redshift_string 
+
                 sample_webtable.add_row(webtable_row) 
                 sample_fitstable.add_row(fitstable_row)
                 targets.add_row(targetstable_row) 
@@ -97,9 +115,15 @@ def scrape_headers(targets):
 
             os.chdir('..')          # go back to "datapile" 
 
-    print exposures 
+    if not have_alt_names:  
+      del sample_webtable['NED', 'Simbad'] 
+
+    if not redshifts:  
+      del sample_webtable['Redshift'] 
 
     sample_fitstable.write(canonical_filename+'_sample.fits', format='fits', overwrite=True) 
+
+    del sample_webtable['Target Category']				# just omit this for now 
     sample_webtable.write(canonical_filename+'_websample.fits', format='fits', overwrite=True) 
     sample_webtable.write('sample_webtable.temp', format='jsviewer') 
     sample_webtable.write(canonical_filename+'_sample_webtable.txt' ,format='ascii') 
@@ -110,7 +134,15 @@ def scrape_headers(targets):
 
     exposures.write(canonical_filename+'_exposures.fits', format='fits', overwrite=True) 
     exposures.write(canonical_filename+'_exposures.html',format='jsviewer') 
+ 
+    print 
+    print 
+    print 
+    print 
+    print 
+    print 
 
+    # only do this if you have created the master header table in the commented out bits above 
     # header_table0.write(canonical_filename+'_headers0.fits', format='fits', overwrite=True) 
     # header_table0.write(canonical_filename+'_headers0.html', format='jsviewer')
     
@@ -135,7 +167,9 @@ def get_webtable_info(filename, nfiles, counter):
     
     targname_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_quicklook.html">'+targname+'</a>'
 
-    simbad_string = '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?CooDefinedFrames=none&CooEpoch=2000&Coord='+str(ra)+'d'+str(dec)+'d&submit=submit%20query&Radius.unit=arcsec&CooEqui=2000&CooFrame=FK5&Radius=4"> SIMBAD </a>'  
+    ned_string = 'NEDNAME' 
+    simbad_string = 'SIMBADNAME' 
+    redshift_string = '. . .' 
 
     mast_string = '<a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html?searchQuery='+str(ra)+','+str(dec)+'"> MAST  </a>'  
     print mast_string 
@@ -144,16 +178,36 @@ def get_webtable_info(filename, nfiles, counter):
 
     fuv_m_quicklook_urlstring = '...' 
     fuv_l_quicklook_urlstring = '...' 
-    print 'Is there another damn problem with the targname?', hdr0['targname'].strip(), 'what?' 
     if (os.path.exists(hdr0['targname'].strip()+'_coadd_final_all.png')): 
         fuv_m_quicklook_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_all.fits"><img height="40" src="../datapile/'+targname+'/'+targname+'_coadd_final_all.png"></a>'
 
     if (os.path.exists(hdr0['targname'].strip()+'_coadd_G140L_final_all.png')): 
         fuv_l_quicklook_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.fits"><img height="40" src="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.png"></a>'
-        this_coadd = Table.read(targname+'_coadd_G140L_final_all.fits') 
-        i_good = np.where(this_coadd['FLUX'] > 0) 
-        median_sn = np.median(this_coadd['SN'][i_good]) 
-        print 'Median SN for ', targname, ' = ', median_sn 
+        l_download_string = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.fits">ALL</a> |'
+
+        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G140L_final_lp1.fits')):
+            print 'I found a coadd for G140L LP=1'
+            l_download_string = l_download_string  + \
+            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_lp1.fits">LP1</a> | '
+        else:
+            l_download_string = l_download_string+'  ' + \
+            '. . . .  | '
+        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G140L_final_lp2.fits')):
+            print 'I found a coadd for G140L LP=2'
+            l_download_string = l_download_string + \
+            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_lp2.fits">LP2</a> | '
+        else:
+            l_download_string = l_download_string + \
+            '  '+'. . . .  | '
+        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G140L_final_lp3.fits')):
+            print 'I found a coadd for G140L LP=3'
+            l_download_string = l_download_string + \
+            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_lp3.fits">LP3</a>   '
+        else:
+            l_download_string = l_download_string+'  '+'. . . .  '
+    else:
+        l_download_string = '. . . | . . . | . . . | . . . '
+
 
     if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_all.fits')): 
         print 'I found a coadd for G130M LP=ALL and will plot it. . . ' 
@@ -194,9 +248,12 @@ def get_webtable_info(filename, nfiles, counter):
     """
 
     webtable_row = [counter, targname_urlstring, ra, dec, n_exp_string, str.split(targdesc,';')[0],
-        targdesc, simbad_string, mast_string, median_sn,
-        fuv_m_quicklook_urlstring, fuv_l_quicklook_urlstring, download_string]
-    fitstable_row = [counter, targname, ra, dec, nfiles, str.split(targdesc,';')[0], targdesc, median_sn]
+        targdesc, ned_string, redshift_string, mast_string, median_sn, 
+        fuv_m_quicklook_urlstring, download_string, fuv_l_quicklook_urlstring, l_download_string]
+    print webtable_row 
+    fitstable_row = [counter, targname, ra, dec, nfiles, str.split(targdesc,';')[0], targdesc, ned_string, median_sn]
+    print fitstable_row 
+    
     targetstable_row = [1,targname,str.split(targdesc,';')[0], targdesc]
     return webtable_row, fitstable_row, targetstable_row
 
@@ -286,7 +343,7 @@ if __name__ == "__main__":
     args = parse_args()
     targets = args.filename
     
-    scrape_headers(targets)
+    scrape_headers(targets,args.altnames,args.redshifts)
     sys.exit("""
     
     ~~~~~~~*~*~*~*~
