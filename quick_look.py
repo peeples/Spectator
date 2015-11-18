@@ -178,7 +178,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
     
     #### coadd legend
     # --->>>> should only be added if there is actually a coadd , fix!!!!! <<<<------ 
-    info = """<p style="font-size=200%">Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per unsmoothed pixel, in shaded window.</p>"""
+    info = """<p style="font-size=300%">Co-added spectra. Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per unsmoothed pixel, in shaded window.</p>"""
 
     #### coadds????? ######
     addfig = ""
@@ -362,8 +362,9 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
     plt.ylim(fluxmin, fluxmax)
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
-    plt.ylabel(r'flux [erg / s / cm$^2/$ \AA]', fontsize=20)
-    plt.xlabel(r'wavelength [\AA]',fontsize=20)
+
+    plt.ylabel(r'flux [erg / s / cm$^2/$ $\AA$]', fontsize=20)
+    plt.xlabel(r'wavelength [$\AA$]',fontsize=20)
     plt.tight_layout()
     plt.text(0.99, 0.85, labeltext, fontsize=16, transform=ax.transAxes, horizontalalignment='right', color='black', bbox=dict(facecolor='white',linewidth=0.3,alpha=0.5), zorder=15)
     
@@ -413,6 +414,7 @@ def get_demographics(dataset_list):
     exposure_cat = exposure_cat[mask]
 
     # if scrape_headers can't be found, do it the hard way.
+    # this can be done with a try except feature but things need re-arranging.
     if (False):
         LYA_MIN = 1206 ## should this depend on M vs L grating?
         LYA_MAX = 1226
@@ -654,6 +656,7 @@ def plot_time_flux(tf, **kwargs):
     latest = np.max(tf['date'])
     
     fig = plt.figure(figsize=(18, 6), dpi=300)
+
     ax = fig.add_subplot(111)
     for w in range(np.shape(tf_w.groups.indices)[0]-1):
         print w,  np.shape(window)[0],  np.shape(wc),  np.shape(tf_w.groups.indices)[0]
@@ -661,7 +664,7 @@ def plot_time_flux(tf, **kwargs):
         ax.plot(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], color=wc[w])
         ##ax.plot_date(ttt, tf_w.groups[w]['flux'], color=wc[w])
         ax.errorbar(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], yerr=tf_w.groups[w]['error'], color=wc[w])
-        labeltext = str(window[w][0])+'$<\lambda<$'+str(window[w][1])+r'\AA'
+        labeltext = str(window[w][0])+'$<\lambda<$'+str(window[w][1])+r'$\AA$'
         ax.scatter(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], s=50, color=wc[w], alpha=0.5, label=labeltext)
     xr = np.array(ax.get_xlim())
     yr = np.array(ax.get_ylim())
@@ -673,7 +676,7 @@ def plot_time_flux(tf, **kwargs):
     #lg = ax.legend(loc='upper left')
     #lg.draw_frame(False)
     plt.xlabel('year', fontsize=20)
-    plt.ylabel(r'flux [erg/s/cm$^2$/\AA]', fontsize=20)
+    plt.ylabel(r'flux [erg/s/cm$^2$/$\AA$]', fontsize=20)
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
     plt.xlim(xr[0], xr[1])
