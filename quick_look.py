@@ -188,13 +188,25 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         output_name = targname+'_coadd_final_all.png'
         labeltext = """full coadd of """+targname+""" COS/FUV M"""
         if (os.path.exists(targname+'_coadd_G130M_final_all.fits')): 
-            print '      ~~~ happy fuv data dance ~~~~' 
-            print '      YES!! I FOUND THE G130M coadd!'
-            print '      ~~~~ happy fuv data dance ~~~' 
+            # print '      ~~~ happy fuv data dance ~~~~' 
+            # print '      YES!! I FOUND THE G130M coadd!'
+            # print '      ~~~~ happy fuv data dance ~~~' 
             coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
             print targname+':  quick_look opened  ' + targname+'_coadd_G130M_final_all.fits for ', LAMBDA_MIN, LAMBDA_MAX 
-      
-    if(os.path.exists(targname+'_coadd_G130M_final_all.fits') or os.path.exists(targname+'_coadd_G160M_final_all.fits')):
+
+    if(os.path.exists(targname + '_coadd_FUVM_final_all.fits')):
+        coadd_exists = True
+        output_name = targname + '_coadd_final_all.png'
+        labeltext = """full coadd of """+targname+""" COS/FUV M"""
+        print '      ~~~ happy fuv data dance ~~~~' 
+        print '      YES!! I FOUND THE FULL G130M+G160M COADD!'
+        print '      ~~~~ happy fuv data dance ~~~' 
+        coadd = Table.read(targname+'_coadd_FUVM_final_all.fits')
+        print targname+':  quick_look opened  ' + targname+'_coadd_FUVM_final_all.fits for ', LAMBDA_MIN, LAMBDA_MAX
+        plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
+        addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
+
+    elif(os.path.exists(targname+'_coadd_G130M_final_all.fits') or os.path.exists(targname+'_coadd_G160M_final_all.fits')):
         coadd_exists = True
         output_name = targname+'_coadd_final_all.png'
         labeltext = """full coadd of """+str(targname)+""" COS/FUV M"""
@@ -226,8 +238,11 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         print targname+':  quick_look opened  ' + targname+'_coadd_G140L_final_all.fits', LAMBDA_MIN, LAMBDA_MAX  
         copy  = Table.read(targname+'_coadd_G140L_final_all.fits') 
         copy['FLUX'] = 0.0 
-        copy['FLUX'][np.where(copy['WAVE'] < 1100)] = coadd['FLUX'][np.where(copy['WAVE'] < 1100)]
-        copy['FLUX'][np.where(copy['WAVE'] > 1900)] = coadd['FLUX'][np.where(copy['WAVE'] > 1900)]
+        i_clip_short = np.where((copy['WAVE'] < 1000) & (copy['FLUX'] / copy['ERROR'] < 1.))  			#### screen out points at < 1100 with low S/N 
+        i_clip_long  = np.where((copy['WAVE'] > 2000) & (copy['FLUX'] / copy['ERROR'] < 1.))  			#### screen out points at < 1100 with low S/N 
+        print 'HELL', copy.keys() 
+        copy['FLUX'][i_clip_short] = coadd['FLUX'][i_clip_short] 
+        copy['FLUX'][i_clip_long] = coadd['FLUX'][i_clip_long] 
         plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 900, 2160, 0, MAX_FLUX, \
 		window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7, color='red', \
 		overwave=copy['WAVE'],overflux=copy['FLUX'],overwgt=copy['DQ']+1.,overerror=copy['ERROR'],overcolor='0.96' )
@@ -292,6 +307,10 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
     wgt = kwargs.get("wgt", np.ones(np.shape(flux)))
     time = kwargs.get("time",-1)
     time_flux = kwargs.get("time_flux", [])
+
+    if (fluxmax < 0): 
+        fluxmax = 1.8 * np.mean(flux[np.where(flux > 0.)])
+        print "fluxmax received by plot_spectrum is negative: adjusting it to: ", fluxmax 
     
     fig = plt.figure(figsize=(18, 6), dpi=300)
     ax = fig.add_subplot(111)
@@ -317,14 +336,15 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
             e = smooth_spectrum(1, error, wgt, smooth)
             ax.step(wave, e, lw=1, color='grey', alpha=0.6)
         for w in range(np.shape(window)[0]):
-            indices = np.where((wgt > 0) & (wavelength > window[w][0]) & (wavelength < window[w][1]))
+            indices = np.where((flux > 0) & (wgt > 0) & (wavelength > window[w][0]) & (wavelength < window[w][1]))
             if(np.shape(indices)[1] > 0):
-                medflux = np.median(flux)
+                print "CALCULATING SN FOR ",w, wc[w]
+                medflux = np.median(flux[indices])
                 err = np.sqrt(np.average(np.average((medflux-flux)**2, weights=error)))/np.sqrt(np.size(indices))
                 sn = np.median(flux[indices]/error[indices])
                 if (sn > 0):
                     plt.text(window[w][1], 0.75*fluxmax, "S/N="+"{:.1f}".format(sn), fontsize=10)
-                print time,medflux,err,w, sn 
+                print 'S to N:', time,medflux,err,w, sn 
                 if time > 0:
                     time_flux.append([time,medflux,err,w])
             plt.axvspan(window[w][0], window[w][1], facecolor=wc[w], alpha=0.5)
