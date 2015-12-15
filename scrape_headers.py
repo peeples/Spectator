@@ -31,28 +31,24 @@ def scrape_headers(targets,altnames,redshifts):
     canonical = ascii.read(canonical_filename+'.list')
 
     have_alt_names = False 
-    print 'altnames: ', altnames 
-    print 'redshifts: ', redshifts 
     if altnames != 'blank': 
        alt_namefile = altnames
        altname_table = fitsio.read(alt_namefile, ext=1, header=True)[0] 
-       #simbad_table = fitsio.read(simbad_namefile, ext=1, header=True)[0] 
-       print 'Successfully opened the fits file with the alt names in it' 
+       print 'Successfully opened '+alt_namefile+' with the alt names in it.' 
        have_alt_names = True 
 
     print canonical
     dirlist = canonical['targname'][np.where(canonical['flag'] == 1)]
 
     sample_fitstable = Table(names=('Number','Target Name', 'RA','DEC','Nexp','Target Category', \
-        'Target Description','Alt Name','S/N (130)'), dtype=('i4','S200','f4','f4','I8','S20','S20','S30','f1')) 
+        'Target Description','Alt Name','median S/N'), dtype=('i4','S200','f4','f4','I8','S20','S20','S30','S5')) 
 
     sample_webtable = Table(names=('Number','Target Name', 'RA','DEC','Nexp','Target Category', \
-        'Target Description','AltName','Redshift','MAST', 'S/N (130)', 'FUV M', 'M Download', 'FUV L','L Download'), \
-        dtype=('i4','S200','f4','f4','S240','S20','S20','S600','S5','S240','f1','S250','S350','S250','S350')) 
+        'Target Description','AltName','AltClass', 'Redshift','MAST', 'median S/N', 'FUV M', 'FUV L', 'Download', 'L Download'), \
+        dtype=('i4','S200','f4','f4','S240','S20','S20','S600','S30', 'S5','S240','S5','S350','S350','S350','S350')) 
 
     targets = Table(names=('Flag','Target Name', 'Target Category', 'Target Description'), dtype=('i4','S200','S25', 'S350')) 
 
-    # this will contain a global database of all exposures 
     exposures = Table(names=('Rootname','Target Name', 'RA','DEC','PropID','PI Name','Detector','Segment',\
         'LP','Grating', 'Cenwave','FPPOS','Exptime','Nevents','Extended','Date','Target Description'),   
         dtype=('S20','S35','f4','f4','I5','S20','S4','S5','S2','S10','S10','I2','f10','f8','S4','S12','S200'))
@@ -74,7 +70,8 @@ def scrape_headers(targets,altnames,redshifts):
     # rows = [hdr1[k] for k in names]
     # header_table1 = Table(rows=[rows], names=names)
 
-    redshift_string = '. . . ' 
+    redshift_string = ' . . . ' 
+    altname_string = ' skldjf' 
 
     counter = 1 
     total_number_of_headers = 0 
@@ -89,7 +86,6 @@ def scrape_headers(targets,altnames,redshifts):
             nfiles = np.size(filelist)
             print "There are ", nfiles, " exposures for target ", dirname 
 
-            #### Grab the first file and create html page for the "sample_webtable" 
             if nfiles > 0:			### if there are no files, then this target was aliased or something else happened and you won't be using it. 
                 webtable_row, fitstable_row, targetstable_row = get_webtable_info(filelist[0], nfiles, counter)
 
@@ -97,17 +93,20 @@ def scrape_headers(targets,altnames,redshifts):
                     i_alt = np.where(altname_table[:]['Target Name'] == dirname)
                     print 'Redshift = ', altname_table[int(i_alt[0])][12] 
                     altname_string = altname_table[int(i_alt[0])][16] 
-
+                    if 'No match' in altname_table[int(i_alt[0])][11]: altname_string = ' . . . ' 
+                    altname_class = altname_table[int(i_alt[0])][14] 
                     redshift_string = str(altname_table[int(i_alt[0])][12]) 
+
                     webtable_row[7] = altname_string 
-                    webtable_row[8] = redshift_string 
+                    webtable_row[8] = altname_class 
+                    webtable_row[9] = redshift_string 
 
                 sample_webtable.add_row(webtable_row) 
                 sample_fitstable.add_row(fitstable_row)
                 targets.add_row(targetstable_row) 
 
                 dataset_list = glob.glob(os.path.join('.', '*x1d.fits'))
-                print "Making Exposure Catalog: " , filelist
+                print "SCRAPE_HEADERS: Making Exposure Catalog: " , filelist
   
                 make_exposure_catalog(filelist)
 
@@ -116,14 +115,15 @@ def scrape_headers(targets,altnames,redshifts):
             os.chdir('..')          # go back to "datapile" 
 
     if not have_alt_names:  
-      del sample_webtable['NED', 'Simbad'] 
+      if ('AltName' in sample_webtable.keys()): del sample_webtable['AltName'] 
+      if ('AltClass' in sample_webtable.keys()): del sample_webtable['AltClass'] 
 
     if not redshifts:  
       del sample_webtable['Redshift'] 
 
     sample_fitstable.write(canonical_filename+'_sample.fits', format='fits', overwrite=True) 
 
-    del sample_webtable['Target Category']				# just omit this for now 
+    del sample_webtable['Target Category','L Download']				# just omit this for now 
     sample_webtable.write(canonical_filename+'_websample.fits', format='fits', overwrite=True) 
     sample_webtable.write('sample_webtable.temp', format='jsviewer') 
     sample_webtable.write(canonical_filename+'_sample_webtable.txt' ,format='ascii') 
@@ -136,10 +136,7 @@ def scrape_headers(targets,altnames,redshifts):
     exposures.write(canonical_filename+'_exposures.html',format='jsviewer') 
  
     print 
-    print 
-    print 
-    print 
-    print 
+    print "END OF SCRAPE_HEADERS" 
     print 
 
     # only do this if you have created the master header table in the commented out bits above 
@@ -161,29 +158,41 @@ def get_webtable_info(filename, nfiles, counter):
     targdesc = hdr0['TARDESCR'].strip() 
     ra = hdr0['RA_TARG']
     dec = hdr0['DEC_TARG']
-    print ra, dec, targname 
 
-    median_sn = -9.99 
+    median_sn = '. . .' 
     
     targname_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_quicklook.html">'+targname+'</a>'
 
-    ned_string = 'NEDNAME' 
-    simbad_string = 'SIMBADNAME' 
-    redshift_string = '. . .' 
+    altname_string = ' . . . ' 
+    altname_class = ' . . . ' 
+    redshift_string = ' . . . ' 
 
     mast_string = '<a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html?searchQuery='+str(ra)+','+str(dec)+'"> MAST  </a>'  
-    print mast_string 
 
     n_exp_string = '<a href="../datapile/'+targname+'/all_exposures.html">'+str(nfiles)+'</a>' 
 
-    fuv_m_quicklook_urlstring = '...' 
-    fuv_l_quicklook_urlstring = '...' 
-    if (os.path.exists(hdr0['targname'].strip()+'_coadd_final_all.png')): 
-        fuv_m_quicklook_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_all.fits"><img height="40" src="../datapile/'+targname+'/'+targname+'_coadd_final_all.png"></a>'
+    fuv_m_quicklook_urlstring = ' . . . ' 
+    fuv_l_quicklook_urlstring = ' . . . ' 
+
+    download_string = ' . . . ' 
+
+    G130M_coadd_exists = False 
+    G160M_coadd_exists = False 
+    G140L_coadd_exists = False 
+    if os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_all.fits'): G130M_coadd_exists = True 
+    if os.path.exists(hdr0['targname'].strip()+'_coadd_G160M_final_all.fits'): G160M_coadd_exists = True 
+    if os.path.exists(hdr0['targname'].strip()+'_coadd_G140L_final_all.fits'): G140L_coadd_exists = True 
+
+    if G130M_coadd_exists or G160M_coadd_exists: 
+        fuv_m_quicklook_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_coadd_final_all.png"><img height="40" src="../datapile/'+targname+'/'+targname+'_coadd_final_all.png"></a>'
 
     if (os.path.exists(hdr0['targname'].strip()+'_coadd_G140L_final_all.png')): 
-        fuv_l_quicklook_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.fits"><img height="40" src="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.png"></a>'
+        fuv_l_quicklook_urlstring = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.png"><img height="40" src="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.png"></a>'
         l_download_string = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G140L_final_all.fits">ALL</a> |'
+
+        this_coadd = Table.read(targname+'_coadd_G140L_final_all.fits') 
+        i_good = np.where((this_coadd['FLUX'] > 0) & (this_coadd['WAVE'] > 1100) & (this_coadd['WAVE'] < 1900))  ## take regions that are not lousy S/N 
+        median_sn_140 = np.median(this_coadd['SN'][i_good]) 
 
         if (os.path.exists(hdr0['targname'].strip()+'_coadd_G140L_final_lp1.fits')):
             print 'I found a coadd for G140L LP=1'
@@ -209,49 +218,69 @@ def get_webtable_info(filename, nfiles, counter):
         l_download_string = '. . . | . . . | . . . | . . . '
 
 
-    if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_all.fits')): 
-        print 'I found a coadd for G130M LP=ALL and will plot it. . . ' 
-        download_string = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_all.fits">ALL</a> |'
+#    if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_all.fits')): 
+#        download_string = '<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_all.fits">ALL</a> |'
+#
+#        this_coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
+#        i_good = np.where(this_coadd['FLUX'] > 0) 
+#        median_sn_130 = np.median(this_coadd['SN'][i_good]) 
+#        print 'Median G130M SN for ', targname, ' = ', str(median_sn)[0:6] 
+#    
+#        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp1.fits')): 
+#            print 'I found a coadd for G130M LP=1' 
+#            download_string = download_string  + \
+#            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_lp1.fits">LP1</a> | '
+#        else: 
+#            download_string = download_string+'  ' + \
+#            '. . . .  | ' 
+#        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp2.fits')): 
+#            print 'I found a coadd for G130M LP=2' 
+#            download_string = download_string + \
+#            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_lp2.fits">LP2</a> | '
+#        else: 
+#            download_string = download_string + \
+#            '  '+'. . . .  | ' 
+#        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp3.fits')): 
+#            print 'I found a coadd for G130M LP=3' 
+#            download_string = download_string + \
+#            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_lp3.fits">LP3</a>   '
+#        else: 
+#            download_string = download_string+'  '+'. . . .  ' 
+#    else: 
+#        download_string = '. . . | . . . | . . . | . . . ' 
 
+    if G140L_coadd_exists:
+        this_coadd = Table.read(targname+'_coadd_G140L_final_all.fits') 
+        i_good = np.where((this_coadd['FLUX'] > 0) & (this_coadd['WAVE'] > 1100) & (this_coadd['WAVE'] < 1900))  ## take regions that are not lousy S/N 
+        median_sn = np.median(this_coadd['SN'][i_good]) 
+        print 'Median G130M SN for ', targname, ' = ', str(median_sn)[0:6] 
+        median_sn = str(median_sn)[0:6] 
+
+    if G160M_coadd_exists:
+        this_coadd = Table.read(targname+'_coadd_G160M_final_all.fits') 
+        i_good = np.where(this_coadd['FLUX'] > 0) 
+        median_sn = np.median(this_coadd['SN'][i_good]) 
+        print 'Median G160M SN for ', targname, ' = ', str(median_sn)[0:6] 
+        median_sn = str(median_sn)[0:6] 
+
+    if G130M_coadd_exists:
         this_coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
         i_good = np.where(this_coadd['FLUX'] > 0) 
         median_sn = np.median(this_coadd['SN'][i_good]) 
-        print 'Median SN for ', targname, ' = ', median_sn 
-    
-        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp1.fits')): 
-            print 'I found a coadd for G130M LP=1' 
-            download_string = download_string  + \
-            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_lp1.fits">LP1</a> | '
-        else: 
-            download_string = download_string+'  ' + \
-            '. . . .  | ' 
-        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp2.fits')): 
-            print 'I found a coadd for G130M LP=2' 
-            download_string = download_string + \
-            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_lp2.fits">LP2</a> | '
-        else: 
-            download_string = download_string + \
-            '  '+'. . . .  | ' 
-        if (os.path.exists(hdr0['targname'].strip()+'_coadd_G130M_final_lp3.fits')): 
-            print 'I found a coadd for G130M LP=3' 
-            download_string = download_string + \
-            '  '+'<a href="../datapile/'+targname+'/'+targname+'_coadd_G130M_final_lp3.fits">LP3</a>   '
-        else: 
-            download_string = download_string+'  '+'. . . .  ' 
-    else: 
-        download_string = '. . . | . . . | . . . | . . . ' 
+        print 'Median G130M SN for ', targname, ' = ', str(median_sn)[0:6] 
+        median_sn = str(median_sn)[0:6] 
 
-    
-    print """
-    """,targname,"""DOWNLOAD_STRING
-    """, download_string,"""
-    """
+
+
+    if (os.path.exists(hdr0['targname'].strip()+'.tar.gz')): 
+        download_string = '<a href="../datapile/'+targname+'/'+targname+'.tar.gz">ALL</a>'
 
     webtable_row = [counter, targname_urlstring, ra, dec, n_exp_string, str.split(targdesc,';')[0],
-        targdesc, ned_string, redshift_string, mast_string, median_sn, 
-        fuv_m_quicklook_urlstring, download_string, fuv_l_quicklook_urlstring, l_download_string]
-    print webtable_row 
-    fitstable_row = [counter, targname, ra, dec, nfiles, str.split(targdesc,';')[0], targdesc, ned_string, median_sn]
+        targdesc, altname_string, altname_class, redshift_string, mast_string, str(median_sn)[0:4], 
+        fuv_m_quicklook_urlstring, fuv_l_quicklook_urlstring, download_string, l_download_string]
+
+    print 'WEBTABLE_ROW', webtable_row 
+    fitstable_row = [counter, targname, ra, dec, nfiles, str.split(targdesc,';')[0], targdesc, altname_string, median_sn]
     print fitstable_row 
     
     targetstable_row = [1,targname,str.split(targdesc,';')[0], targdesc]
