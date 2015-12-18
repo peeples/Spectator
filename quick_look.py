@@ -37,7 +37,10 @@ def get_quick_look():
         print "---> all_exposures.txt doesn't exist!!!!! so I'm going to make it now"
         from scrape_headers import make_exposure_catalog as make_exposure_catalog
         DATA_DIR = '.'
-        dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits'))
+        dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits.gz'))
+        if len(dataset_list) == 0:
+            print "did not find any x1d.gz files, trying for unzipped ones" 
+            dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits'))
         if len(dataset_list) == 0:
             return "there's nothing here to make all_exposures with, trying to exit gracefully :-("
         exposure_cat = make_exposure_catalog(dataset_list)
@@ -46,7 +49,7 @@ def get_quick_look():
     exposure_cat = exposure_cat[mask]
     dataset_list = []
     for root in exposure_cat['Rootname']:
-        dataset_list.append(root+"_x1d.fits")
+        dataset_list.append(root+"_x1d.fits.gz")
     if len(exposure_cat) == 0:
         return "the flags in all_exposures.txt told me to not do anything :-("
         
@@ -77,12 +80,13 @@ def get_quick_look():
 
     ra = exposure_cat['RA'][0]
     dec = exposure_cat['DEC'][0]
+    mast_url = '"https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html?searchQuery='+str(ra)+','+str(dec)+'"'  
     tardescr = exposure_cat['Target Description'][0]
     coord = SkyCoord(ra=ra*u.degree, dec=dec*u.degree)
     info = """<html>
     <head><h1 style="text-align:center;font-size:350%">"""+targname+"""</h1></head>
     <body><p style="text-align:center;font-size=250%">"""+tardescr+"""<br>
-    &alpha; = """+str(ra)+""", &delta; = """+str(dec)+""" ("""+coord.to_string('hmsdms')+""")</font></p>
+    &alpha; = """+str(ra)+""", &delta; = """+str(dec)+""" (<a href="""+mast_url+""">"""+coord.to_string('hmsdms')+"""</a>)</font></p>
     <hr />
     """
     outfile.write(info)
@@ -96,8 +100,7 @@ def get_quick_look():
     print 'MAX_FLUX', r['maxflux'] 
 
     t_pid = t.group_by(['PID'])
-    info="""<p style="text-align:center;font-size=200%">COS quick look of<br>
-    Programs: """
+    info="""<p style="text-align:center;font-size=200%">Programs: """
     for k in t_pid.groups.keys:
         info = info+"""<a href="http://www.stsci.edu/cgi-bin/get-proposal-info?id="""+str(k[0])+"""&observatory=HST">"""+str(k[0])+"""</a> """
     info = info + """</p>"""
@@ -107,18 +110,19 @@ def get_quick_look():
     colors = get_default_pid_colors()
     figname = "exptime_histogram.png"
     plot_exptime_histogram(t, figname, colors=colors, t_pid=t_pid, width=width)
-    addfig = r"""<br><img src='"""+pathname+figname+r"""' style="width:600pix">"""
+    # addfig = r"""<br><img src='"""+pathname+figname+r"""' style="width:600pix">"""
+    addfig = r"""<br><img src='"""+pathname+figname+r"""' style="width:35%">"""
     outfile.write(addfig)
 
     figname = "exptime_fppos_histogram.png"
     plot_exptime_fppos_histogram(t, figname, t_pid=t_pid, width=width)
-    addfig = r"""<img src='"""+pathname+figname+r"""' style="width:600pix">"""
+    addfig = r"""<img src='"""+pathname+figname+r"""' style="width:35%">"""
     outfile.write(addfig)
 
     if (exposure_cat['Detector'] == 'FUV').any():
         figname = "lifetime_position_histogram.png"
         plot_lifetime_position_histogram(t, figname, t_pid=t_pid, width=width)
-        addfig = r"""<img src='"""+pathname+figname+r"""' style="width:600pix">"""
+        addfig = r"""<img src='"""+pathname+figname+r"""' style="width:25%">"""
         outfile.write(addfig)
 
     add_coadd = find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, window=window, wc=wc)
@@ -149,7 +153,8 @@ def get_quick_look():
             time_flux = plot_spectrum(output_name, data['wavelength'], data['flux'], LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, \
                                       window=window, wc=wc, labeltext=labeltext, error=data['error'], wgt=data['dq_wgt'], smooth=7, time=time, time_flux=time_flux)
 
-            addfig = r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
+            # addfig = r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
+            addfig = r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
             print "writing out file ", addfig 
             outfile.write(addfig)
 
@@ -157,7 +162,7 @@ def get_quick_look():
     if np.size(time_flux) > 0: 
         tf = Table(rows=time_flux, names=('mjd','flux','error','window'))
         plot_time_flux(tf, window=window, wc=wc)
-        addfig = r"""<br><img src='"""+pathname+r"""time_flux.png' style="width:1200pix">"""
+        addfig = r"""<br><img src='"""+pathname+r"""time_flux.png' style="width:100%">"""
         outfile.write(addfig)
  
     outfile.write("</body></html>")
@@ -183,60 +188,60 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
     #### coadds????? ######
     addfig = ""
     coadd_exists = False
-    if(os.path.exists(targname+'_coadd_G130M_final_all.fits') or os.path.exists(targname+'_coadd_G160M_final_all.fits')):
+    if(os.path.exists(targname+'_coadd_G130M_final_all.fits.gz') or os.path.exists(targname+'_coadd_G160M_final_all.fits.gz')):
         coadd_exists = True
         output_name = targname+'_coadd_final_all.png'
         labeltext = """full coadd of """+targname+""" COS/FUV M"""
-        if (os.path.exists(targname+'_coadd_G130M_final_all.fits')): 
+        if (os.path.exists(targname+'_coadd_G130M_final_all.fits.gz')): 
             # print '      ~~~ happy fuv data dance ~~~~' 
             # print '      YES!! I FOUND THE G130M coadd!'
             # print '      ~~~~ happy fuv data dance ~~~' 
-            coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
+            coadd = Table.read(targname+'_coadd_G130M_final_all.fits.gz') 
             print targname+':  quick_look opened  ' + targname+'_coadd_G130M_final_all.fits for ', LAMBDA_MIN, LAMBDA_MAX 
 
-    if(os.path.exists(targname + '_coadd_FUVM_final_all.fits')):
+    if(os.path.exists(targname + '_coadd_FUVM_final_all.fits.gz')):
         coadd_exists = True
         output_name = targname + '_coadd_final_all.png'
         labeltext = """full coadd of """+targname+""" COS/FUV M"""
         print '      ~~~ happy fuv data dance ~~~~' 
         print '      YES!! I FOUND THE FULL G130M+G160M COADD!'
         print '      ~~~~ happy fuv data dance ~~~' 
-        coadd = Table.read(targname+'_coadd_FUVM_final_all.fits')
+        coadd = Table.read(targname+'_coadd_FUVM_final_all.fits.gz')
         print targname+':  quick_look opened  ' + targname+'_coadd_FUVM_final_all.fits for ', LAMBDA_MIN, LAMBDA_MAX
         plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
-        addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
+        addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
 
-    elif(os.path.exists(targname+'_coadd_G130M_final_all.fits') or os.path.exists(targname+'_coadd_G160M_final_all.fits')):
+    elif(os.path.exists(targname+'_coadd_G130M_final_all.fits.gz') or os.path.exists(targname+'_coadd_G160M_final_all.fits.gz')):
         coadd_exists = True
         output_name = targname+'_coadd_final_all.png'
         labeltext = """full coadd of """+str(targname)+""" COS/FUV M"""
-        if (os.path.exists(targname+'_coadd_G130M_final_all.fits')): 
-            coadd = Table.read(targname+'_coadd_G130M_final_all.fits') 
+        if (os.path.exists(targname+'_coadd_G130M_final_all.fits.gz')): 
+            coadd = Table.read(targname+'_coadd_G130M_final_all.fits.gz') 
             print targname+':  quick_look opened  ' + targname+'_coadd_G130M_final_all.fits for ', LAMBDA_MIN, LAMBDA_MAX 
 
             plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
-            if (os.path.exists(targname+'_coadd_G160M_final_all.fits')):
-                sec_coadd = Table.read(targname+'_coadd_G160M_final_all.fits') 
+            if (os.path.exists(targname+'_coadd_G160M_final_all.fits.gz')):
+                sec_coadd = Table.read(targname+'_coadd_G160M_final_all.fits.gz') 
                 print 'In the second if statement' 
-                print targname+':  quick_look opened  ' + targname+'_coadd_G160M_final_all.fits', LAMBDA_MIN, LAMBDA_MAX  
+                print targname+':  quick_look opened  ' + targname+'_coadd_G160M_final_all.fits.gz', LAMBDA_MIN, LAMBDA_MAX  
                 plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, \
                        window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7, \
                        overwave=sec_coadd['WAVE'], overflux=sec_coadd['FLUX'],overwgt=sec_coadd['DQ']+1.,overerror=sec_coadd['ERROR'],overcolor="black")
                 print sec_coadd
-            addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
+            addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
         else: 
-            coadd = Table.read(targname+'_coadd_G160M_final_all.fits') 
-            print targname+':  quick_look opened  ' + targname+'_coadd_G160M_final_all.fits', LAMBDA_MIN, LAMBDA_MAX  
+            coadd = Table.read(targname+'_coadd_G160M_final_all.fits.gz') 
+            print targname+':  quick_look opened  ' + targname+'_coadd_G160M_final_all.fits.gz', LAMBDA_MIN, LAMBDA_MAX  
             plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
-            addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
+            addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
 
-    if(os.path.exists(targname+'_coadd_G140L_final_all.fits')): 
+    if(os.path.exists(targname+'_coadd_G140L_final_all.fits.gz')): 
         coadd_exists = True
         output_name = targname+'_coadd_G140L_final_all.png'
         labeltext = """full coadd of """+str(targname)+""" COS/FUV L"""
-        coadd = Table.read(targname+'_coadd_G140L_final_all.fits') 
+        coadd = Table.read(targname+'_coadd_G140L_final_all.fits.gz') 
         print targname+':  quick_look opened  ' + targname+'_coadd_G140L_final_all.fits', LAMBDA_MIN, LAMBDA_MAX  
-        copy  = Table.read(targname+'_coadd_G140L_final_all.fits') 
+        copy  = Table.read(targname+'_coadd_G140L_final_all.fits.gz') 
         copy['FLUX'] = 0.0 
         i_clip_short = np.where((copy['WAVE'] < 1000) & (copy['FLUX'] / copy['ERROR'] < 1.))  			#### screen out points at < 1100 with low S/N 
         i_clip_long  = np.where((copy['WAVE'] > 2000) & (copy['FLUX'] / copy['ERROR'] < 1.))  			#### screen out points at < 1100 with low S/N 
@@ -246,7 +251,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 900, 2160, 0, MAX_FLUX, \
 		window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7, color='red', \
 		overwave=copy['WAVE'],overflux=copy['FLUX'],overwgt=copy['DQ']+1.,overerror=copy['ERROR'],overcolor='0.96' )
-        addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
+        addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
 
     if(os.path.exists(targname+'_FUV_M_coadd.dat')):
         # if the FUV M coadd exists, use it 
@@ -256,7 +261,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         print targname+':  quick_look opened  ' + targname+'_FUV_M_coadd.dat'
         labeltext = """Colorado coadd of """+str(targname)+""" COS/FUV M"""    
         plot_spectrum(output_name, coadd['wave'], coadd['flux'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['err'], smooth=7)
-        addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
+        addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
 
     if(os.path.exists(targname+'_FUV_L_coadd.dat')):
         # if the FUV L coadd exists, use it
@@ -266,7 +271,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         print  'quick_look opened' + targname+'_FUV_L_coadd.dat'
         labeltext = """coadd of """+str(targname)+""" COS/FUV L"""
         plot_spectrum(output_name, coadd['wave'], coadd['flux'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['err'], smooth=7)
-        addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
+        addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
     
     if not coadd_exists:
         print "could not find a coadd, so sad"
