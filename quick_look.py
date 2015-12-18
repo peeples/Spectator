@@ -39,8 +39,10 @@ def get_quick_look():
         DATA_DIR = '.'
         dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits.gz'))
         if len(dataset_list) == 0:
-            print "did not find any x1d.gz files, trying for unzipped ones" 
-            dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits'))
+            print "did not find any x1d.fits.gz files, trying for unzipped ones"
+            print "I'm also going to gzip any x1d.fits files I do find..."
+            os.system("gzip *x1d.fits")
+            dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits.gz'))
         if len(dataset_list) == 0:
             return "there's nothing here to make all_exposures with, trying to exit gracefully :-("
         exposure_cat = make_exposure_catalog(dataset_list)
@@ -180,6 +182,9 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
     smooth = kwargs.get("smooth", 1)
 
     print "--->>>> assuming that coadds are named with ",targname,"!!! find_and_plot_coadds won't find them if not !!!!! <<<<------"
+    print "--->>>> I'm gzipping your coadds because I won't find them if they aren't zipped !!!!! <<<<------"
+    zipstring = "gzip "+targname+"_coadd*.fits"
+    os.system(zipstring)
     
     #### coadd legend
     # --->>>> should only be added if there is actually a coadd , fix!!!!! <<<<------ 
