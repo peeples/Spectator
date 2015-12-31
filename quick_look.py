@@ -78,15 +78,17 @@ def get_quick_look():
     if exists:
         command = "rm -f "+outfilename
         os.system(command)
-    outfile = open(outfilename, "w")
+        outfile = open(outfilename, "w")
 
     ra = exposure_cat['RA'][0]
     dec = exposure_cat['DEC'][0]
     mast_url = '"https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html?searchQuery='+str(ra)+','+str(dec)+'"'  
     tardescr = exposure_cat['Target Description'][0]
     coord = SkyCoord(ra=ra*u.degree, dec=dec*u.degree)
+    targnamelink ="""<a href=".">"""+targname+"""</a>"""
     info = """<html>
-    <head><h1 style="text-align:center;font-size:350%">"""+targname+"""</h1></head>
+    <head><title>"""+targname+"""</title>
+    <h1 style="text-align:center;font-size:350%">"""+targnamelink+"""</h1></head>
     <body><p style="text-align:center;font-size=250%">"""+tardescr+"""<br>
     &alpha; = """+str(ra)+""", &delta; = """+str(dec)+""" (<a href="""+mast_url+""">"""+coord.to_string('hmsdms')+"""</a>)</font></p>
     <hr />
@@ -681,7 +683,8 @@ def plot_time_flux(tf, **kwargs):
     
     tf_w = tf.group_by('window')
     print tf_w
-
+    tf_w.sort("date")
+    
     earliest = np.min(tf['date'])
     latest = np.max(tf['date'])
     
