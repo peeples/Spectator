@@ -30,7 +30,7 @@ def parse_args():
 
 #-----------------------------------------------------------------------------------------------------
 
-def drive_quicklook(targets): 
+def drive_quick_look(targets): 
     clobber = targets[1]
     canonical = ascii.read(targets[0]+'.list') 
     print canonical
@@ -75,9 +75,9 @@ def mp_drive_ql_dirlist(dirc):
 
 if __name__ == "__main__":
     args = parse_args()
-    targets = (args.filename, args.clobber)
+    targets = (args.targets, args.clobber)
     
-    drive_quicklook(targets)
+    drive_quick_look(targets)
     sys.exit("""
     
     ~~~~~~~*~*~*~*~
