@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import fitsio
-from astropy.table import Table, vstack 
+from astropy.table import Table, vstack
 from astropy.io import ascii
 import numpy as np
 import argparse
@@ -49,10 +49,11 @@ def scrape_headers(targets,altnames,redshifts):
 
     targets = Table(names=('Flag','Target Name', 'Target Category', 'Target Description'), dtype=('i4','S200','S25', 'S350')) 
 
-    exposures = Table(names=('Rootname','Target Name', 'RA','DEC','PropID','PI Name','Detector','Segment',\
-        'LP','Grating', 'Cenwave','FPPOS','Exptime','Nevents','Extended','Date','Target Description'),   
-        dtype=('S20','S35','f4','f4','I5','S20','S4','S5','S2','S10','S10','I2','f10','f8','S4','S12','S200'))
-
+    ## exposures = Table(names=('Rootname','Target Name', 'RA','DEC','PropID','PI Name','Detector','Segment',\
+        # 'LP','Grating', 'Cenwave','FPPOS','Exptime','Nevents','Extended','Date','Target Description'),   
+       # dtype=('S20','S35','f4','f4','I5','S20','S4','S5','S2','S10','S10','I2','f10','f8','S4','S12','S200'))
+    exposures = []
+       
     #### set up the master "header table"
     ###### ---->>>>>> why does this have to be done each time ????? <<<<<---------
     # generic = "generic_x1d.fits"
@@ -108,7 +109,19 @@ def scrape_headers(targets,altnames,redshifts):
                 dataset_list = glob.glob(os.path.join('.', '*x1d.fits.gz'))
                 print "SCRAPE_HEADERS: Making Exposure Catalog: " , filelist
   
-                make_exposure_catalog(filelist)
+                exposure_cat = make_exposure_catalog(filelist)
+                print len(exposures)
+                print "this is exposure cat:"
+                print exposure_cat
+                if len(exposures) == 0:
+                    exposures = exposure_cat
+                else:
+                    exposure_tmp = exposures
+                    exposures = vstack([exposure_tmp, exposure_cat])
+                    # exposures.add_row(exposure_cat)
+                print "THIS IS THE EXPOSURES WHAT IT LOOKS LIKE NOW:"
+                print exposures
+                print "DID ANYTHING PRINT"
 
                 counter = counter + 1 
 
