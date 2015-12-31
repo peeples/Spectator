@@ -133,7 +133,7 @@ def get_quick_look():
     outfile.write(add_coadd)
         
     #### add legend
-    info = """<p style="font-size=300%">Individual exposures<br>Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per unsmoothed pixel, in shaded window.</p>"""
+    info = """<p style="font-size=300%">Individual exposures<br>Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per ~1 resel, in shaded window.</p>"""
     outfile.write(info)
 
     #### Loop through files and make plots!
@@ -190,7 +190,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
     
     #### coadd legend
     # --->>>> should only be added if there is actually a coadd , fix!!!!! <<<<------ 
-    info = """<p style="font-size=300%">Co-added spectra. Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per unsmoothed pixel, in shaded window.</p>"""
+    info = """<p style="font-size=300%">Co-added spectra. Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per ~1 resel, in shaded window.</p>"""
 
     #### coadds????? ######
     addfig = ""
@@ -348,12 +348,33 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
             e = smooth_spectrum(1, error, wgt, smooth)
             ax.step(wave, e, lw=1, color='grey', alpha=0.6)
         for w in range(np.shape(window)[0]):
-            indices = np.where((flux > 0) & (wgt > 0) & (wavelength > window[w][0]) & (wavelength < window[w][1]))
+            if np.asarray(np.shape(np.shape(flux))) > 1:
+                for i in range(np.shape(flux)[0]):
+                    sn_all = smooth_spectrum(1, np.ravel(flux[i]/error[i]), wgt[i], smooth)
+                    f = smooth_spectrum(1, flux[i], wgt[i], smooth)
+                    e = smooth_spectrum(1, error[i], wgt[i], smooth)
+                    indices = np.where((f[i] > 0) & (wgt[i] > 0) & (wavelength[i] > window[w][0]) & (wavelength[i] < window[w][1]))
+                    if(np.shape(indices)[1] > 0):
+                        print "CALCULATING SN FOR ",w, wc[w]
+                        medflux = np.median(f[indices])
+                        err = np.sqrt(np.average(np.average((medflux-f)**2, weights=e)))/np.sqrt(np.size(indices))
+                        sn = np.median(sn_all[indices])
+                        if (sn > 0):
+                            plt.text(window[w][1], 0.75*fluxmax, "S/N="+"{:.1f}".format(sn), fontsize=10)
+                        print 'S to N:', time,medflux,err,w, sn 
+                        if time > 0:
+                            time_flux.append([time,medflux,err,w])
+
+            else:
+                f = smooth_spectrum(1, flux, wgt, smooth)
+                e = smooth_spectrum(1, error, wgt, smooth)
+                sn_all = smooth_spectrum(1, np.ravel(flux/error), wgt, smooth)
+                indices = np.where((f > 0) & (wgt > 0) & (wavelength > window[w][0]) & (wavelength < window[w][1]))
             if(np.shape(indices)[1] > 0):
                 print "CALCULATING SN FOR ",w, wc[w]
-                medflux = np.median(flux[indices])
-                err = np.sqrt(np.average(np.average((medflux-flux)**2, weights=error)))/np.sqrt(np.size(indices))
-                sn = np.median(flux[indices]/error[indices])
+                medflux = np.median(f[indices])
+                err = np.sqrt(np.average(np.average((medflux-f)**2, weights=e)))/np.sqrt(np.size(indices))
+                sn = np.median(sn_all[indices])
                 if (sn > 0):
                     plt.text(window[w][1], 0.75*fluxmax, "S/N="+"{:.1f}".format(sn), fontsize=10)
                 print 'S to N:', time,medflux,err,w, sn 
