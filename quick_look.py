@@ -39,9 +39,9 @@ def get_quick_look():
         DATA_DIR = '.'
         dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits.gz'))
         if len(dataset_list) == 0:
-            print "did not find any x1d.fits.gz files, trying for unzipped ones"
-            print "I'm also going to gzip any x1d.fits files I do find..."
-            os.system("gzip *x1d.fits")
+            print "did not find any x1d.fits.gz.gz files, trying for unzipped ones"
+            print "I'm also going to gzip any x1d.fits.gz files I do find..."
+            os.system("gzip *x1d.fits.gz")
             dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits.gz'))
         if len(dataset_list) == 0:
             return "there's nothing here to make all_exposures with, trying to exit gracefully :-("
@@ -185,7 +185,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
 
     print "--->>>> assuming that coadds are named with ",targname,"!!! find_and_plot_coadds won't find them if not !!!!! <<<<------"
     print "--->>>> I'm gzipping your coadds because I won't find them if they aren't zipped !!!!! <<<<------"
-    zipstring = "gzip "+targname+"_coadd*.fits"
+    zipstring = "gzip "+targname+"_coadd*.fits.gz"
     os.system(zipstring)
     
     #### coadd legend
@@ -204,7 +204,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
             # print '      YES!! I FOUND THE G130M coadd!'
             # print '      ~~~~ happy fuv data dance ~~~' 
             coadd = Table.read(targname+'_coadd_G130M_final_all.fits.gz') 
-            print targname+':  quick_look opened  ' + targname+'_coadd_G130M_final_all.fits for ', LAMBDA_MIN, LAMBDA_MAX 
+            print targname+':  quick_look opened  ' + targname+'_coadd_G130M_final_all.fits.gz for ', LAMBDA_MIN, LAMBDA_MAX 
 
     if(os.path.exists(targname + '_coadd_FUVM_final_all.fits.gz')):
         coadd_exists = True
@@ -214,7 +214,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         print '      YES!! I FOUND THE FULL G130M+G160M COADD!'
         print '      ~~~~ happy fuv data dance ~~~' 
         coadd = Table.read(targname+'_coadd_FUVM_final_all.fits.gz')
-        print targname+':  quick_look opened  ' + targname+'_coadd_FUVM_final_all.fits for ', LAMBDA_MIN, LAMBDA_MAX
+        print targname+':  quick_look opened  ' + targname+'_coadd_FUVM_final_all.fits.gz for ', LAMBDA_MIN, LAMBDA_MAX
         plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
         addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
 
@@ -224,7 +224,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         labeltext = """full coadd of """+str(targname)+""" COS/FUV M"""
         if (os.path.exists(targname+'_coadd_G130M_final_all.fits.gz')): 
             coadd = Table.read(targname+'_coadd_G130M_final_all.fits.gz') 
-            print targname+':  quick_look opened  ' + targname+'_coadd_G130M_final_all.fits for ', LAMBDA_MIN, LAMBDA_MAX 
+            print targname+':  quick_look opened  ' + targname+'_coadd_G130M_final_all.fits.gz for ', LAMBDA_MIN, LAMBDA_MAX 
 
             plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
             if (os.path.exists(targname+'_coadd_G160M_final_all.fits.gz')):
@@ -247,7 +247,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         output_name = targname+'_coadd_G140L_final_all.png'
         labeltext = """full coadd of """+str(targname)+""" COS/FUV L"""
         coadd = Table.read(targname+'_coadd_G140L_final_all.fits.gz') 
-        print targname+':  quick_look opened  ' + targname+'_coadd_G140L_final_all.fits', LAMBDA_MIN, LAMBDA_MAX  
+        print targname+':  quick_look opened  ' + targname+'_coadd_G140L_final_all.fits.gz', LAMBDA_MIN, LAMBDA_MAX  
         copy  = Table.read(targname+'_coadd_G140L_final_all.fits.gz') 
         copy['FLUX'] = 0.0 
         i_clip_short = np.where((copy['WAVE'] < 1000) & (copy['FLUX'] / copy['ERROR'] < 1.))  			#### screen out points at < 1100 with low S/N 
@@ -353,7 +353,9 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                     sn_all = smooth_spectrum(1, np.ravel(flux[i]/error[i]), wgt[i], smooth)
                     f = smooth_spectrum(1, flux[i], wgt[i], smooth)
                     e = smooth_spectrum(1, error[i], wgt[i], smooth)
-                    indices = np.where((f[i] > 0) & (wgt[i] > 0) & (wavelength[i] > window[w][0]) & (wavelength[i] < window[w][1]))
+                    indices = np.where(wgt[i] > 0)
+                    wave = wavelength[i][indices]
+                    indices = np.where((f > 0) & (wave > window[w][0]) & (wave < window[w][1]))
                     if(np.shape(indices)[1] > 0):
                         print "CALCULATING SN FOR ",w, wc[w]
                         medflux = np.median(f[indices])
@@ -364,7 +366,6 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                         print 'S to N:', time,medflux,err,w, sn 
                         if time > 0:
                             time_flux.append([time,medflux,err,w])
-
             else:
                 f = smooth_spectrum(1, flux, wgt, smooth)
                 e = smooth_spectrum(1, error, wgt, smooth)
@@ -698,14 +699,14 @@ def plot_time_flux(tf, **kwargs):
     wc = kwargs.get("wc", get_default_windows()[1])
 
     lpmoves = [56131.0, 57062.0]  ## COS FUV lifetime position moves, 2012-07-23 and 2015-02-09
-
+    lpmoves_dec = Time(lpmoves, format='mjd').decimalyear
+    
     tf['date'] = Time(tf['mjd'].data,format='mjd').datetime
     ## tf['date'] = Time(tf['mjd'].data,format='mjd').decimalyear
     
     tf_w = tf.group_by('window')
     print tf_w
-    tf_w.sort("date")
-    
+        
     earliest = np.min(tf['date'])
     latest = np.max(tf['date'])
     
@@ -715,6 +716,7 @@ def plot_time_flux(tf, **kwargs):
     for w in range(np.shape(tf_w.groups.indices)[0]-1):
         print w,  np.shape(window)[0],  np.shape(wc),  np.shape(tf_w.groups.indices)[0]
         # ttt = Time(tf_w.groups[w]['mjd'].data,format='mjd').plot_date
+        tf_w.groups[w].sort('date')
         ax.plot(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], color=wc[w])
         ##ax.plot_date(ttt, tf_w.groups[w]['flux'], color=wc[w])
         ax.errorbar(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], yerr=tf_w.groups[w]['error'], color=wc[w])
@@ -722,10 +724,10 @@ def plot_time_flux(tf, **kwargs):
         ax.scatter(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], s=50, color=wc[w], alpha=0.5, label=labeltext)
     xr = np.array(ax.get_xlim())
     yr = np.array(ax.get_ylim())
-    ax.plot([lpmoves[0], lpmoves[0]], [-1, 1], ls=':', color='k')
-    ax.text(lpmoves[0], 0.85*yr[1], r"move to LP2", fontsize=12)
-    ax.plot([lpmoves[1], lpmoves[1]], [-1, 1], ls=':', color='k')
-    ax.text(lpmoves[1], 0.85*yr[1], r"move to LP3", fontsize=12)
+    ax.plot([lpmoves_dec[0], lpmoves_dec[0]], [-1, 1], ls=':', color='k')
+    ax.text(lpmoves_dec[0], 0.85*yr[1], r"move to LP2", fontsize=12)
+    ax.plot([lpmoves_dec[1], lpmoves_dec[1]], [-1, 1], ls=':', color='k')
+    ax.text(lpmoves_dec[1], 0.85*yr[1], r"move to LP3", fontsize=12)
     ax.xaxis.set_major_formatter(FormatStrFormatter('%.6f'))
     #lg = ax.legend(loc='upper left')
     #lg.draw_frame(False)
