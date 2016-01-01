@@ -267,21 +267,21 @@ def get_webtable_info(filename, nfiles, counter):
     if G140L_coadd_exists:
         this_coadd = Table.read(targname+'_coadd_G140L_final_all.fits.gz') 
         i_good = np.where((this_coadd['FLUX'] > 0) & (this_coadd['WAVE'] > 1100) & (this_coadd['WAVE'] < 1900))  ## take regions that are not lousy S/N 
-        median_sn = np.median(this_coadd['SN'][i_good]) 
+        median_sn = np.median(this_coadd['SN'][i_good]) * np.sqrt(7.0)
         print 'Median G130M SN for ', targname, ' = ', str(median_sn)[0:6] 
         #median_sn = str(median_sn)[0:6] 
 
     if G160M_coadd_exists:
         this_coadd = Table.read(targname+'_coadd_G160M_final_all.fits.gz') 
         i_good = np.where(this_coadd['FLUX'] > 0) 
-        median_sn = np.median(this_coadd['SN'][i_good]) 
+        median_sn = np.median(this_coadd['SN'][i_good])  * np.sqrt(7.0)
         print 'Median G160M SN for ', targname, ' = ', str(median_sn)[0:6] 
         #median_sn = str(median_sn)[0:6] 
 
     if G130M_coadd_exists:
         this_coadd = Table.read(targname+'_coadd_G130M_final_all.fits.gz') 
         i_good = np.where(this_coadd['FLUX'] > 0) 
-        median_sn = np.median(this_coadd['SN'][i_good]) 
+        median_sn = np.median(this_coadd['SN'][i_good])  * np.sqrt(7.0)
         print 'Median G130M SN for ', targname, ' = ', str(median_sn)[0:6] 
         #median_sn = str(median_sn)[0:6] 
 

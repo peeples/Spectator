@@ -360,7 +360,7 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                         print "CALCULATING SN FOR ",w, wc[w]
                         medflux = np.median(f[indices])
                         err = np.sqrt(np.average(np.average((medflux-f)**2, weights=e)))/np.sqrt(np.size(indices))
-                        sn = np.median(sn_all[indices])
+                        sn = np.median(sn_all[indices]) * np.sqrt(smooth)  ## assuming smoothing by one resel
                         if (sn > 0):
                             plt.text(window[w][1], 0.75*fluxmax, "S/N="+"{:.1f}".format(sn), fontsize=10)
                         print 'S to N:', time,medflux,err,w, sn 
@@ -375,7 +375,7 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                 print "CALCULATING SN FOR ",w, wc[w]
                 medflux = np.median(f[indices])
                 err = np.sqrt(np.average(np.average((medflux-f)**2, weights=e)))/np.sqrt(np.size(indices))
-                sn = np.median(sn_all[indices])
+                sn = np.median(sn_all[indices]) * np.sqrt(smooth)
                 if (sn > 0):
                     plt.text(window[w][1], 0.75*fluxmax, "S/N="+"{:.1f}".format(sn), fontsize=10)
                 print 'S to N:', time,medflux,err,w, sn 
