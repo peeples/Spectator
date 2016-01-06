@@ -1,0 +1,20 @@
+January 6, 2016
+
+To run:
+% python spectator.py targets
+where targets.list is a file to be read in with
+first column = flag (0,1) if target is to be used,
+second column = target/directory name" with YOUR
+
+This will run both scrape_headers (which generates tables of
+information describing the sample) and quick_look, which generates
+demographics plots and plots of spectra
+
+Required packages:
+ - astropy: http://www.astropy.org/
+ - fitsio: https://pypi.python.org/pypi/fitsio/
+   (soon to be optional if you have astropy)
+ - matplotlib
+
+
+
