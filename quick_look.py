@@ -79,6 +79,10 @@ def get_quick_look():
         command = "rm -f "+outfilename
         os.system(command)
         outfile = open(outfilename, "w")
+    else: 
+        print "CREATING OUTFILE", outfilename 
+        outfile = open(outfilename, "w")
+        
 
     ra = exposure_cat['RA'][0]
     dec = exposure_cat['DEC'][0]
