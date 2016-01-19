@@ -67,7 +67,7 @@ def drive_ql_dirlist(dirc):
 #-----------------------------------------------------------------------------------------------------
 
 def mp_drive_ql_dirlist(dirc):
-    pool = mp.Pool(processes=6)
+    pool = mp.Pool(processes=1)
     pool.map(drive_ql_dirlist, dirc)
 
 
