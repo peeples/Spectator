@@ -4,7 +4,7 @@ To run:
 % python spectator.py targets
 where targets.list is a file to be read in with
 first column = flag (0,1) if target is to be used,
-second column = target/directory name" with YOUR
+second column = target/directory name"  
 
 This will run both scrape_headers (which generates tables of
 information describing the sample) and quick_look, which generates
@@ -15,6 +15,12 @@ Required packages:
  - fitsio: https://pypi.python.org/pypi/fitsio/
    (soon to be optional if you have astropy)
  - matplotlib
+ - Assumes Python 2.
 
 
+Known issues:
 
+Currently this only works with COS/FUV data, and many of the
+peculiarities, both in plotting and scraping the headers for
+information, are particular to COS/FUV. That said, it does work for
+_all_ COS/FUV data publicly available as of December 2015.
