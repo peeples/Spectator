@@ -26,7 +26,7 @@ def get_quick_look():
 
     mpl.rcParams['font.family'] = 'stixgeneral'
 
-    window, wc = get_default_windows()
+    window, wc, w_used = get_default_windows()
     
     #### Find the desired x1d's in the directory
     # first, check if all_exposures.txt exists. if it does, read it in
@@ -49,6 +49,7 @@ def get_quick_look():
     # second, cull for anything with Flag = 1
     mask = exposure_cat['Flag'] == 1
     exposure_cat = exposure_cat[mask]
+    exposure_cat.sort('Cenwave')
     dataset_list = []
     for root in exposure_cat['Rootname']:
         dataset_list.append(root+"_x1d.fits.gz")
@@ -63,6 +64,7 @@ def get_quick_look():
     if (os.path.exists(alias_file)):
         af = open(alias_file, 'r')
         targname = af.readline()
+        targname = targname.strip()
         af.close()
     else:
         print "---->>>> get_quick_look can't find "+alias_file+"!!!!! making one instead.....  <<<<----------"
@@ -79,10 +81,8 @@ def get_quick_look():
         command = "rm -f "+outfilename
         os.system(command)
         outfile = open(outfilename, "w")
-    else: 
-        print "CREATING OUTFILE", outfilename 
+    else:
         outfile = open(outfilename, "w")
-        
 
     ra = exposure_cat['RA'][0]
     dec = exposure_cat['DEC'][0]
@@ -101,9 +101,20 @@ def get_quick_look():
 
     #### Now loop through all the files to figure out the demographics
     t, r = get_demographics(dataset_list)
-    LAMBDA_MIN = np.min(r['minwave']-2)
-    LAMBDA_MAX = np.max(r['maxwave']+2)
-    MAX_FLUX = 1.05*np.max(r['maxflux'])
+    r_det = r.group_by(['detector'])
+    mask = r_det.groups.keys['detector'] == 'FUV'
+    r_fuv = r_det.groups[mask]
+    mask = r_det.groups.keys['detector'] == 'NUV'
+    r_nuv = r_det.groups[mask]
+
+    if (exposure_cat['Detector'] == 'FUV').any():
+        LAMBDA_MIN_FUV = np.min(r_fuv['minwave']-2)
+        LAMBDA_MAX_FUV = np.max(r_fuv['maxwave']+2)
+        MAX_FLUX_FUV = 1.05*np.max(r_fuv['maxflux'])
+    if (exposure_cat['Detector'] == 'NUV').any():
+        LAMBDA_MIN_NUV = np.min(r_nuv['minwave']-2)
+        LAMBDA_MAX_NUV = np.max(r_nuv['maxwave']+2)
+        MAX_FLUX_NUV = 1.05*np.max(r_nuv['maxflux'])    
 
     print 'MAX_FLUX', r['maxflux'] 
 
@@ -115,29 +126,64 @@ def get_quick_look():
     outfile.write(info)
 
     width = 0.7
-    colors = get_default_pid_colors()
-    figname = "exptime_histogram.png"
-    plot_exptime_histogram(t, figname, colors=colors, t_pid=t_pid, width=width)
-    # addfig = r"""<br><img src='"""+pathname+figname+r"""' style="width:600pix">"""
-    addfig = r"""<br><img src='"""+pathname+figname+r"""' style="width:35%">"""
-    outfile.write(addfig)
+    colors = get_default_pid_colors(t_pid.groups.keys)
+    print colors
 
-    figname = "exptime_fppos_histogram.png"
-    plot_exptime_fppos_histogram(t, figname, t_pid=t_pid, width=width)
-    addfig = r"""<img src='"""+pathname+figname+r"""' style="width:35%">"""
-    outfile.write(addfig)
-
+    ### first do demographics for just the FUV exposures, then repeat first two for any NUV observations.
+    
     if (exposure_cat['Detector'] == 'FUV').any():
-        figname = "lifetime_position_histogram.png"
-        plot_lifetime_position_histogram(t, figname, t_pid=t_pid, width=width)
-        addfig = r"""<img src='"""+pathname+figname+r"""' style="width:25%">"""
+        t_det = t.group_by(['detector'])
+        mask = t_det.groups.keys['detector'] == 'FUV'
+        t_fuv = t_det.groups[mask]
+        t_fuv_pid = t_fuv.group_by(['PID'])
+        print t_det
+        print t_fuv
+        
+        figname = "fuv_exptime_histogram.png"
+        title = "distribution of FUV exposure times by cenwave"
+        plot_exptime_histogram(t_fuv, figname, colors=colors, t_pid=t_fuv_pid, width=width, title=title)
+        addfig = r"""<br><img src='"""+pathname+figname+r"""' style="width:35%">"""
         outfile.write(addfig)
 
-    add_coadd = find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, window=window, wc=wc)
-    outfile.write(add_coadd)
+        figname = "fuv_exptime_fppos_histogram.png"
+        title = "distribution of FUV exposure times by cenwave and FP-POS"
+        plot_exptime_fppos_histogram(t_fuv, figname, colors=colors, t_pid=t_fuv_pid, width=width, title=title)
+        addfig = r"""<img src='"""+pathname+figname+r"""' style="width:35%">"""
+        outfile.write(addfig)
+        
+        figname = "fuv_lifetime_position_histogram.png"
+        plot_lifetime_position_histogram(t_fuv, figname, colors=colors, t_pid=t_fuv_pid, width=width)
+        addfig = r"""<img src='"""+pathname+figname+r"""' style="width:25%"><br>"""
+        outfile.write(addfig)
+
+    if (exposure_cat['Detector'] == 'NUV').any():
+        t_det = t.group_by(['detector'])
+        mask = t_det.groups.keys['detector'] == 'NUV'
+        t_nuv = t_det.groups[mask]
+        t_nuv_pid = t_nuv.group_by(['PID'])
+        print t_det
+        print t_nuv
+        
+        figname = "nuv_exptime_histogram.png"
+        title = "distribution of NUV exposure times by cenwave"
+        plot_exptime_histogram(t_nuv, figname, colors=colors, t_pid=t_nuv_pid, width=width, title=title)
+        addfig = r"""<br><img src='"""+pathname+figname+r"""' style="width:35%">"""
+        outfile.write(addfig)
+
+        figname = "nuv_exptime_fppos_histogram.png"
+        title = "distribution of NUV exposure times by cenwave and FP-POS"
+        plot_exptime_fppos_histogram(t_nuv, figname, colors=colors, t_pid=t_nuv_pid, width=width, title=title)
+        addfig = r"""<img src='"""+pathname+figname+r"""' style="width:35%">"""
+        outfile.write(addfig)
+        
+
+    if (exposure_cat['Detector'] == 'FUV').any():
+        print ">>>>>> I AM ASSUMING YOU HAVE COADDS ONLY IF YOU HAVE FUV DATA !!!!!!! <<<<<<<<<<<<<<<<"
+        add_coadd = find_and_plot_coadds(targname, pathname, LAMBDA_MIN_FUV, LAMBDA_MAX_FUV, 0, MAX_FLUX_FUV, window=window, wc=wc)
+        outfile.write(add_coadd)
         
     #### add legend
-    info = """<p style="font-size=300%">Individual exposures<br>Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per ~1 resel, in shaded window.</p>"""
+    info = """<p style="font-size=300%">Individual exposures<br>Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 6 pixels (~1 resel). S/N&equiv;median(flux/error), per ~1 resel, in shaded window.</p>"""
     outfile.write(info)
 
     #### Loop through files and make plots!
@@ -158,10 +204,23 @@ def get_quick_look():
             """+str(hdr['primesi'])+"""/"""+str(hdr['opt_elem']) + """/"""+str(hdr['cenwave']) + """/FPPOS"""+str(hdr['fppos'])+"""
             """+ hdulist[1].header['date-obs']+""", Exptime = """ +str(int(data['exptime'][0]))+"""s"""
             time = np.average([hdulist[1].header['expstart'], hdulist[1].header['expend']])
-            time_flux = plot_spectrum(output_name, data['wavelength'], data['flux'], LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, \
-                                      window=window, wc=wc, labeltext=labeltext, error=data['error'], wgt=data['dq_wgt'], smooth=7, time=time, time_flux=time_flux)
+            wavelength = data['wavelength']
+            flux = data['flux']
+            error = data['error']
+            wgt = data['dq_wgt']
+            if hdr['detector'] == 'FUV':
+                LAMBDA_MIN, LAMBDA_MAX, MAX_FLUX = LAMBDA_MIN_FUV, LAMBDA_MAX_FUV, MAX_FLUX_FUV
+            if hdr['detector'] == 'NUV':
+                LAMBDA_MIN, LAMBDA_MAX, MAX_FLUX = LAMBDA_MIN_NUV, LAMBDA_MAX_NUV, MAX_FLUX_NUV
+                if hdr['opt_elem'] == 'G230L':
+                    ### want to get rid of stripe c
+                    wavelength = data['wavelength'][0:2]
+                    flux = data['flux'][0:2]
+                    error = data['error'][0:2]
+                    wgt = data['dq_wgt'][0:2]
+            time_flux = plot_spectrum(output_name, wavelength, flux, LAMBDA_MIN, LAMBDA_MAX, 0, MAX_FLUX, \
+                                      window=window, wc=wc, labeltext=labeltext, error=error, wgt=wgt, smooth=6, time=time, time_flux=time_flux)
 
-            # addfig = r"""<br><img src='"""+pathname+output_name+r"""' style="width:1200pix">"""
             addfig = r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
             print "writing out file ", addfig 
             outfile.write(addfig)
@@ -194,7 +253,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
     
     #### coadd legend
     # --->>>> should only be added if there is actually a coadd , fix!!!!! <<<<------ 
-    info = """<p style="font-size=300%">Co-added spectra. Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 7 pixels (~1 resel). S/N&equiv;median(flux/error), per ~1 resel, in shaded window.</p>"""
+    info = """<p style="font-size=300%">Co-added spectra. Legend: <b><font color="black">flux in black</font></b>, <b><font color="grey">errors in grey</font></b>, both smoothed over 6 pixels (~1 resel). S/N&equiv;median(flux/error), per ~1 resel, in shaded window.</p>"""
 
     #### coadds????? ######
     addfig = ""
@@ -219,7 +278,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         print '      ~~~~ happy fuv data dance ~~~' 
         coadd = Table.read(targname+'_coadd_FUVM_final_all.fits.gz')
         print targname+':  quick_look opened  ' + targname+'_coadd_FUVM_final_all.fits.gz for ', LAMBDA_MIN, LAMBDA_MAX
-        plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
+        plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=6)
         addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
 
     elif(os.path.exists(targname+'_coadd_G130M_final_all.fits.gz') or os.path.exists(targname+'_coadd_G160M_final_all.fits.gz')):
@@ -230,20 +289,20 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
             coadd = Table.read(targname+'_coadd_G130M_final_all.fits.gz') 
             print targname+':  quick_look opened  ' + targname+'_coadd_G130M_final_all.fits.gz for ', LAMBDA_MIN, LAMBDA_MAX 
 
-            plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
+            plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=6)
             if (os.path.exists(targname+'_coadd_G160M_final_all.fits.gz')):
                 sec_coadd = Table.read(targname+'_coadd_G160M_final_all.fits.gz') 
                 print 'In the second if statement' 
                 print targname+':  quick_look opened  ' + targname+'_coadd_G160M_final_all.fits.gz', LAMBDA_MIN, LAMBDA_MAX  
                 plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, \
-                       window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7, \
+                       window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=6, \
                        overwave=sec_coadd['WAVE'], overflux=sec_coadd['FLUX'],overwgt=sec_coadd['DQ']+1.,overerror=sec_coadd['ERROR'],overcolor="black")
                 print sec_coadd
             addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
         else: 
             coadd = Table.read(targname+'_coadd_G160M_final_all.fits.gz') 
             print targname+':  quick_look opened  ' + targname+'_coadd_G160M_final_all.fits.gz', LAMBDA_MIN, LAMBDA_MAX  
-            plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7)
+            plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=6)
             addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
 
     if(os.path.exists(targname+'_coadd_G140L_final_all.fits.gz')): 
@@ -260,7 +319,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         copy['FLUX'][i_clip_short] = coadd['FLUX'][i_clip_short] 
         copy['FLUX'][i_clip_long] = coadd['FLUX'][i_clip_long] 
         plot_spectrum(output_name, coadd['WAVE'], coadd['FLUX'], 900, 2160, 0, MAX_FLUX, \
-		window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=7, color='red', \
+		window=window, wc=wc, labeltext=labeltext, error=coadd['ERROR'], smooth=6, color='red', \
 		overwave=copy['WAVE'],overflux=copy['FLUX'],overwgt=copy['DQ']+1.,overerror=copy['ERROR'],overcolor='0.96' )
         addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
 
@@ -271,7 +330,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         coadd = scio.readsav(targname+'_FUV_M_coadd.dat')
         print targname+':  quick_look opened  ' + targname+'_FUV_M_coadd.dat'
         labeltext = """Colorado coadd of """+str(targname)+""" COS/FUV M"""    
-        plot_spectrum(output_name, coadd['wave'], coadd['flux'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['err'], smooth=7)
+        plot_spectrum(output_name, coadd['wave'], coadd['flux'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['err'], smooth=6)
         addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
 
     if(os.path.exists(targname+'_FUV_L_coadd.dat')):
@@ -281,7 +340,7 @@ def find_and_plot_coadds(targname, pathname, LAMBDA_MIN, LAMBDA_MAX, MIN_FLUX, M
         coadd = scio.readsav(targname+'_FUV_L_coadd.dat')
         print  'quick_look opened' + targname+'_FUV_L_coadd.dat'
         labeltext = """coadd of """+str(targname)+""" COS/FUV L"""
-        plot_spectrum(output_name, coadd['wave'], coadd['flux'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['err'], smooth=7)
+        plot_spectrum(output_name, coadd['wave'], coadd['flux'], 1100, 1900, 0, MAX_FLUX, window=window, wc=wc, labeltext=labeltext, error=coadd['err'], smooth=6)
         addfig = addfig + r"""<br><img src='"""+pathname+output_name+r"""' style="width:100%">"""
     
     if not coadd_exists:
@@ -319,6 +378,7 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
     labeltext = kwargs.get("labeltext", "")
     window = kwargs.get("window", get_default_windows()[0])
     wc = kwargs.get("wc", get_default_windows()[1])
+    w_used = kwargs.get("w_used", get_default_windows()[2])
     smooth = kwargs.get("smooth", 1)
     wgt = kwargs.get("wgt", np.ones(np.shape(flux)))
     time = kwargs.get("time",-1)
@@ -361,14 +421,17 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                     wave = wavelength[i][indices]
                     indices = np.where((f > 0) & (wave > window[w][0]) & (wave < window[w][1]))
                     if(np.shape(indices)[1] > 0):
-                        print "CALCULATING SN FOR ",w, wc[w]
+                        #print "CALCULATING SN FOR ",w, wc[w]
                         medflux = np.median(f[indices])
                         err = np.sqrt(np.average(np.average((medflux-f)**2, weights=e)))/np.sqrt(np.size(indices))
                         sn = np.median(sn_all[indices]) * np.sqrt(smooth)  ## assuming smoothing by one resel
                         if (sn > 0):
                             plt.text(window[w][1], 0.75*fluxmax, "S/N="+"{:.1f}".format(sn), fontsize=10)
+                            if w_used[w] == 0:
+                                plt.axvspan(window[w][0], window[w][1], facecolor=wc[w], alpha=0.5)
+                                w_used[w] = 1
                         print 'S to N:', time,medflux,err,w, sn 
-                        if time > 0:
+                        if time > 0 and wc[w] != 'grey':
                             time_flux.append([time,medflux,err,w])
             else:
                 f = smooth_spectrum(1, flux, wgt, smooth)
@@ -376,17 +439,21 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                 sn_all = smooth_spectrum(1, np.ravel(flux/error), wgt, smooth)
                 indices = np.where((f > 0) & (wgt > 0) & (wavelength > window[w][0]) & (wavelength < window[w][1]))
             if(np.shape(indices)[1] > 0):
-                print "CALCULATING SN FOR ",w, wc[w]
+                #print "CALCULATING SN FOR ",w, wc[w]
                 medflux = np.median(f[indices])
                 err = np.sqrt(np.average(np.average((medflux-f)**2, weights=e)))/np.sqrt(np.size(indices))
                 sn = np.median(sn_all[indices]) * np.sqrt(smooth)
                 if (sn > 0):
                     plt.text(window[w][1], 0.75*fluxmax, "S/N="+"{:.1f}".format(sn), fontsize=10)
+                    if w_used[w] == 0:
+                        plt.axvspan(window[w][0], window[w][1], facecolor=wc[w], alpha=0.5)
+                        w_used[w] = 1
                 print 'S to N:', time,medflux,err,w, sn 
-                if time > 0:
+                if time > 0 and wc[w] != 'grey':
                     time_flux.append([time,medflux,err,w])
-            plt.axvspan(window[w][0], window[w][1], facecolor=wc[w], alpha=0.5)
-    
+
+            # plt.axvspan(window[w][0], window[w][1], facecolor=wc[w], alpha=0.5)
+
     # do we want to overplot any other spectra?
     if "overwave" in kwargs and "overflux" in kwargs:
         print "overplotting something"
@@ -434,7 +501,7 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
 
     
 #-----------------------------------------------------------------------------------------------------
-    
+  
 
 def get_default_windows():
     window = np.array([[1145,1155],
@@ -444,15 +511,36 @@ def get_default_windows():
                        [1545,1555],
                        [1645,1655],
                        [1745,1755],
-                       [1845,1855]])
-    wc = ['indigo', 'violet', 'blue', 'green', 'gold', 'orange', 'red', 'darkred']
+                       [1845,1855],
+                       [1920,1930],
+                       [2020,2030],
+                       [2120,2130],
+                       [2220,2230],
+                       [2320,2330],
+                       [2420,2430],
+                       [2520,2530],
+                       [2620,2630],
+                       [2720,2730],
+                       [2820,2830],
+                       [2920,2930],
+                       [3020,3030],
+                       [3120,3130]])
+    wc = ['indigo', 'violet', 'blue', 'green', 'gold', 'orange', 'red', 'darkred',
+          'grey', 'grey', 'grey', 'grey', 'grey', 'grey', 'grey', 'grey', 'grey', 'grey', 'grey', 'grey', 'grey']
+
+    w_used = np.zeros(21)
     
-    return window, wc
+    return window, wc, w_used
 
 
-def get_default_pid_colors():
-    return ['purple','yellow','red','cyan','orange','green','blue','magenta','tan',
+def get_default_pid_colors(pids):
+    color_list = ['purple','yellow','red','cyan','orange','green','blue','magenta','tan',
             'grey','pink','maroon','aqua','brown','greenyellow','olive','thistle']
+    colors = {}
+    for p in np.arange(len(pids)):
+        colors[str(pids[p][0])] = color_list[p]
+    return colors
+    
 
 
 #-----------------------------------------------------------------------------------------------------
@@ -487,7 +575,7 @@ def get_demographics(dataset_list):
             if (np.shape(data['FLUX'])[0] == 0):
                 print np.shape(data['FLUX']), filename
                 continue
-            demographics.append((hdr['PROPOSID'], hdr['LINENUM'].split('.')[0], hdr['LINENUM'].split('.')[1], hdr['CENWAVE'], hdr['FPPOS'], hdr['LIFE_ADJ'], hdr['PR_INV_L'], hdr['ROOTNAME'], data['EXPTIME'][0]))
+            demographics.append((hdr['PROPOSID'], hdr['LINENUM'].split('.')[0], hdr['LINENUM'].split('.')[1], hdr['DETECTOR'], hdr['CENWAVE'], hdr['FPPOS'], hdr['LIFE_ADJ'], hdr['PR_INV_L'], hdr['ROOTNAME'], data['EXPTIME'][0]))
             indices = np.where((data["DQ_WGT"] > 0) & (data["DQ"] == 0) & ((data["WAVELENGTH"] > LYA_MAX) | (data["WAVELENGTH"] < LYA_MIN)))
             minwave = 1100 
             maxwave = 1900 
@@ -507,7 +595,7 @@ def get_demographics(dataset_list):
                     maxflux = 3.0 * np.mean(data["FLUX"][indices])   # changed from max of flux by JT 072015 
                 ranges.append((minwave, maxwave, maxflux))
             print "Incorporating minwave, maxwave, maxflux from:    ", filename, hdr['DETECTOR'], hdr['OPT_ELEM'], hdr['CENWAVE'], minwave, maxwave, maxflux 
-        t = Table(rows=demographics, names=('PID', 'Visit', 'expnum', 'cenwave', 'FPPOS', 'lp', 'PI_NAME', 'rootname', 'exptime'))
+        t = Table(rows=demographics, names=('PID', 'Visit', 'expnum', 'detector', 'cenwave', 'FPPOS', 'lp', 'PI_NAME', 'rootname', 'exptime'))
         r = Table(rows=ranges, names=('minwave', 'maxwave', 'maxflux'), dtype=('f8', 'f8', 'f8'))
 
 
@@ -515,7 +603,7 @@ def get_demographics(dataset_list):
     ranges = []
     demographics = []
     for i in range(len(exposure_cat)):
-            demographics.append((exposure_cat['PropID'][i], exposure_cat['Cenwave'][i], exposure_cat['FPPOS'][i], exposure_cat['LP'][i], exposure_cat['PI Name'][i], exposure_cat['Rootname'][i], exposure_cat['Exptime'][i]))
+            demographics.append((exposure_cat['PropID'][i], exposure_cat['Detector'][i], exposure_cat['Cenwave'][i], exposure_cat['FPPOS'][i], exposure_cat['LP'][i], exposure_cat['PI Name'][i], exposure_cat['Rootname'][i], exposure_cat['Exptime'][i]))
             minwave = 1100 
             maxwave = 1900 
             maxflux = 1e-14 
@@ -528,13 +616,13 @@ def get_demographics(dataset_list):
                 maxwave = 1900 
                 maxflux = 3.0 * exposure_cat['Median Flux'][i] # changed from max of flux by JT 072015 
             if exposure_cat['Detector'][i] == 'NUV': 
-                minwave = 1700
-                maxwave = 3000 
-                maxflux = 3.0 * exposure_cat['Mean Flux'][i]   # changed from max of flux by JT 072015 
-            ranges.append((minwave, maxwave, maxflux))
+                minwave = 1680
+                maxwave = 3250 
+                maxflux = 5.0 * exposure_cat['Mean Flux'][i]   # changed from max of flux by JT 072015 
+            ranges.append((minwave, maxwave, maxflux, exposure_cat['Detector'][i]))
 
-    t = Table(rows=demographics, names=('PID', 'cenwave', 'FPPOS', 'lp', 'PI_NAME', 'rootname', 'exptime'))
-    r = Table(rows=ranges, names=('minwave', 'maxwave', 'maxflux'), dtype=('f8', 'f8', 'f8'))
+    t = Table(rows=demographics, names=('PID', 'detector', 'cenwave', 'FPPOS', 'lp', 'PI_NAME', 'rootname', 'exptime'))
+    r = Table(rows=ranges, names=('minwave', 'maxwave', 'maxflux', 'detector'), dtype=('f8', 'f8', 'f8','S3'))
 
     
     print "----------------------- THESE ARE THE DEMOGRAPHICS---------------------" 
@@ -547,10 +635,11 @@ def get_demographics(dataset_list):
 
 def plot_exptime_histogram(t, figname, **kwargs):
     print "plotting exposure time by cenwave histogram"
-    colors = kwargs.get("colors", get_default_pid_colors())
     t_pid = kwargs.get("t_pid", t.group_by(['PID']))
+    colors = kwargs.get("colors", get_default_pid_colors(t_pid.groups.keys))
     t_cen = kwargs.get("t_cen", t.group_by(['cenwave']))
     bins = kwargs.get("bins", t_cen.groups.keys['cenwave'])
+    title = kwargs.get("title","distribution of exposure times by cenwave")
     width = kwargs.get("width", 0.7)
 
     fig = plt.figure(figsize=(6, 6), dpi=300)
@@ -568,13 +657,14 @@ def plot_exptime_histogram(t, figname, **kwargs):
             # print t_pid.groups.keys[k][0], group['cenwave'][0], np.sum(group['exptime'])
             cenwaves_dict[str(group['cenwave'][0])] += np.sum(group['exptime'])
         # print k, ind, cenwaves_dict.values(), colors[k], bottom
-        p = plt.bar(ind, cenwaves_dict.values(), width, color=colors[k], bottom=bottom, label=str(v['PID'][0]))
+        pid = str(v['PID'][0])
+        p = plt.bar(ind, cenwaves_dict.values(), width, color=colors[pid], bottom=bottom, label=pid)
         bottom += cenwaves_dict.values()    
     plt.xlim(0-width/2., np.max(ind)+1.5*width)
     plt.xticks(ind+width/2., bins)
     plt.xlabel("cenwave", fontsize=16)
     plt.ylabel("exposure time [s]", fontsize=16)
-    plt.title("distribution of exposure times by cenwave", fontsize=16)
+    plt.title(title, fontsize=14)
     lg = ax.legend(loc='upper left', labelspacing=0.08, fontsize=16)
     lg.draw_frame(False)
     plt.tight_layout()
@@ -590,10 +680,11 @@ def plot_exptime_histogram(t, figname, **kwargs):
 
 def plot_exptime_fppos_histogram(t, figname, **kwargs): 
     print "plotting exposure time by cenwave+fppos histogram"
-    colors = kwargs.get("colors", get_default_pid_colors())
     t_pid = kwargs.get("t_pid", t.group_by(['PID']))
+    colors = kwargs.get("colors", get_default_pid_colors(t_pid.groups.keys))
     t_cen = kwargs.get("t_cen", t.group_by(['cenwave']))
     bins = kwargs.get("bins", np.array(t_cen.groups.keys['cenwave']))
+    title = kwargs.get("title","distribution of exposure times by cenwave and FP-POS")
     width = kwargs.get("width", 0.7)
 
     if len(bins) > 8:
@@ -616,7 +707,8 @@ def plot_exptime_fppos_histogram(t, figname, **kwargs):
             for group in v.groups:
                 # print t_pid.groups.keys[k][0], group['cenwave'][0], np.sum(group['exptime'])
                 cenwaves_dict[str(group['cenwave'][0])] += np.sum(group['exptime'])
-                p = plt.bar(ind+(fg['FPPOS'][0]-1)*width/4., np.array(cenwaves_dict.values()), width/4, color=colors[k], bottom=bottom[str(fg['FPPOS'][0]-1)], label=str(v['PID'][0]))
+                pid = str(v['PID'][0])
+                p = plt.bar(ind+(fg['FPPOS'][0]-1)*width/4., np.array(cenwaves_dict.values()), width/4, color=colors[pid], bottom=bottom[str(fg['FPPOS'][0]-1)], label=pid)
             bottom[str(fg['FPPOS'][0]-1)] += cenwaves_dict.values()
     xticks = []
     xlbls = []
@@ -641,7 +733,7 @@ def plot_exptime_fppos_histogram(t, figname, **kwargs):
     plt.xlim(0-width/2., np.max(ind)+1.5*width)
     plt.xlabel("cenwave", fontsize=16)
     plt.ylabel("exposure time [s]", fontsize=16)
-    plt.title("distribution of exposure times by cenwave and FP-POS", fontsize=16)
+    plt.title(title, fontsize=14)
     plt.tight_layout()
     if os.path.isfile(figname):
         command = "rm -f "+figname
@@ -654,8 +746,8 @@ def plot_exptime_fppos_histogram(t, figname, **kwargs):
 
 def plot_lifetime_position_histogram(t, figname, **kwargs): 
     print "plotting exposure time by lifetime position histogram"
-    colors = kwargs.get("colors", get_default_pid_colors())
     t_pid = kwargs.get("t_pid", t.group_by(['PID']))
+    colors = kwargs.get("colors", get_default_pid_colors(t_pid.groups.keys))
     width = kwargs.get("width", 0.7)
 
       
@@ -677,16 +769,17 @@ def plot_lifetime_position_histogram(t, figname, **kwargs):
             print t_pid.groups.keys[k][0], group['cenwave'][0], np.sum(group['exptime'])
             lp_dict[str(group['lp'][0])] += np.sum(group['exptime'])
         lp_sort = collections.OrderedDict(sorted(lp_dict.items()))
-        print k, ind, lp_sort.values(), colors[k], bottom
-        p = plt.bar(ind, lp_sort.values(), width, color=colors[k], bottom=bottom, label=str(v['PID'][0]))
+        pid = str(v['PID'][0])
+        print k, ind, lp_sort.values(), colors[pid], bottom
+        p = plt.bar(ind, lp_sort.values(), width, color=colors[pid], bottom=bottom, label=pid)
         bottom += lp_sort.values()
     plt.xlim(0-width/2., np.max(ind)+1.5*width)
     plt.xticks(ind+width/2., bins)
     plt.xlabel("lifetime position", fontsize=16)
     plt.ylabel("exposure time [s]", fontsize=16)
-    plottitle = """distribution of exposure times
-    by lifetime position"""
-    plt.title(plottitle, fontsize=16)
+    plottitle = """distribution of FUV exposure
+    times by lifetime position"""
+    plt.title(plottitle, fontsize=14)
     plt.tight_layout()
     if os.path.isfile(figname):
         command = "rm -f "+figname
