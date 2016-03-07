@@ -452,7 +452,6 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                 print 'S to N 2b:', time,medflux,err,w, sn 
                 if time > 0 and wc[w] != 'grey':
                     time_flux.append([time,medflux,err,w])
-
             # plt.axvspan(window[w][0], window[w][1], facecolor=wc[w], alpha=0.5)
 
     # do we want to overplot any other spectra?
@@ -807,19 +806,21 @@ def plot_time_flux(tf, **kwargs):
         
     earliest = np.min(tf['date'])
     latest = np.max(tf['date'])
-    
+
     fig = plt.figure(figsize=(18, 6), dpi=300)
 
     ax = fig.add_subplot(111)
     for w in range(np.shape(tf_w.groups.indices)[0]-1):
-        print w,  np.shape(window)[0],  np.shape(wc),  np.shape(tf_w.groups.indices)[0]
+        ## print w, tf_w.groups[w]['window'],  np.shape(window)[0],  np.shape(wc),  np.shape(tf_w.groups.indices)[0]
+        this_color_window = wc[tf_w.groups[w]['window'][0]]
+        ## print this_color_window
         # ttt = Time(tf_w.groups[w]['mjd'].data,format='mjd').plot_date
         tf_w.groups[w].sort('date')
         ax.plot(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], color=wc[w])
         ##ax.plot_date(ttt, tf_w.groups[w]['flux'], color=wc[w])
-        ax.errorbar(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], yerr=tf_w.groups[w]['error'], color=wc[w])
+        ax.errorbar(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], yerr=tf_w.groups[w]['error'], color=this_color_window)
         labeltext = str(window[w][0])+'$<\lambda<$'+str(window[w][1])+r'$\AA$'
-        ax.scatter(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], s=50, color=wc[w], alpha=0.5, label=labeltext)
+        ax.scatter(list(Time(tf_w.groups[w]['mjd'].data,format='mjd').decimalyear), tf_w.groups[w]['flux'], s=50, color=this_color_window, alpha=0.5, label=labeltext)
     xr = np.array(ax.get_xlim())
     yr = np.array(ax.get_ylim())
     ax.plot([lpmoves_dec[0], lpmoves_dec[0]], [-1, 1], ls=':', color='k')
