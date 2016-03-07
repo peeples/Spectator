@@ -430,7 +430,7 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                             if w_used[w] == 0:
                                 plt.axvspan(window[w][0], window[w][1], facecolor=wc[w], alpha=0.5)
                                 w_used[w] = 1
-                        print 'S to N:', time,medflux,err,w, sn 
+                        print 'S to N 1:', time,medflux,err,w, sn 
                         if time > 0 and wc[w] != 'grey':
                             time_flux.append([time,medflux,err,w])
             else:
@@ -439,16 +439,17 @@ def plot_spectrum(output_name, wavelength, flux, wavemin, wavemax, fluxmin, flux
                 sn_all = smooth_spectrum(1, np.ravel(flux/error), wgt, smooth)
                 indices = np.where((f > 0) & (wgt > 0) & (wavelength > window[w][0]) & (wavelength < window[w][1]))
             if(np.shape(indices)[1] > 0):
-                #print "CALCULATING SN FOR ",w, wc[w]
+                print "CALCULATING SN FOR ",w, wc[w]
                 medflux = np.median(f[indices])
                 err = np.sqrt(np.average(np.average((medflux-f)**2, weights=e)))/np.sqrt(np.size(indices))
                 sn = np.median(sn_all[indices]) * np.sqrt(smooth)
+                print 'S to N 2a:', time, medflux, err, w, medflux / err, sn  
                 if (sn > 0):
                     plt.text(window[w][1], 0.75*fluxmax, "S/N="+"{:.1f}".format(sn), fontsize=10)
                     if w_used[w] == 0:
                         plt.axvspan(window[w][0], window[w][1], facecolor=wc[w], alpha=0.5)
                         w_used[w] = 1
-                print 'S to N:', time,medflux,err,w, sn 
+                print 'S to N 2b:', time,medflux,err,w, sn 
                 if time > 0 and wc[w] != 'grey':
                     time_flux.append([time,medflux,err,w])
 

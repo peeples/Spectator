@@ -119,9 +119,6 @@ def scrape_headers(targets,altnames,redshifts):
                     exposure_tmp = exposures
                     exposures = vstack([exposure_tmp, exposure_cat])
                     # exposures.add_row(exposure_cat)
-                print "THIS IS THE EXPOSURES WHAT IT LOOKS LIKE NOW:"
-                print exposures
-                print "DID ANYTHING PRINT"
 
                 counter = counter + 1 
 
@@ -287,8 +284,8 @@ def get_webtable_info(filename, nfiles, counter):
 
 
 
-    if (os.path.exists(hdr0['targname'].strip()+'.tar.gz')): 
-        download_string = '<a href="../datapile/'+targname+'/'+targname+'.tar.gz">ALL</a>'
+    if (os.path.exists(hdr0['targname'].strip()+'_target.tar.gz')): 
+        download_string = '<a href="../datapile/'+targname+'/'+targname+'_target.tar.gz">ALL</a>'
 
     webtable_row = [counter, targname_urlstring, ra, dec, n_exp_string, str.split(targdesc,';')[0],
         targdesc, altname_string, altname_class, redshift_string, mast_string, median_sn, 
@@ -342,12 +339,14 @@ def make_exposure_catalog(filelist):
         if (np.shape(data)[0] < 1):
             print "no data:",filename
         else:
-            hdr0['TARGNAME'] = hdr0['TARGNAME'].strip() 
-            indices = np.where((data["DQ_WGT"] > 0) & (data["DQ"] == 0) & ((data["WAVELENGTH"] > LYA_MAX) | (data["WAVELENGTH"] < LYA_MIN)))
-            if hdr0['DETECTOR'].strip() == "FUV":
-                flag = 1
-            else:
-                flag = 0
+            hdr0['TARGNAME'] = hdr0['TARGNAME'].strip()
+            second_order = np.zeros(np.shape(data["FLUX"]))
+            ### Need to exclude Stripe C on G230L because it's all 2nd Order Light
+            if hdr0['OPT_ELEM'].strip() == "G230L":
+                second_order[2] = 1
+            indices = np.where((data["DQ_WGT"] > 0) & (data["DQ"] == 0) & ((data["WAVELENGTH"] > LYA_MAX) | (data["WAVELENGTH"] < LYA_MIN)) & (second_order == 0))
+                
+            flag = 1 
             
             exposure_cat.add_row([flag, hdr0['ROOTNAME'].strip(), hdr0['TARGNAME'].strip(), hdr0['RA_TARG'], hdr0['DEC_TARG'], \
                 hdr0['PROPOSID'], hdr0['PR_INV_L'].strip(), hdr0['DETECTOR'].strip(), hdr0['SEGMENT'].strip(), hdr0['LIFE_ADJ'],  \
