@@ -8,7 +8,7 @@ import sys
 import numpy as np
 from astropy.io import ascii
 
-from spectator import quick_look
+from . import quick_look
 
 
 def parse_args():

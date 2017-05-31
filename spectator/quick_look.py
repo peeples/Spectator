@@ -33,7 +33,7 @@ def get_quick_look():
     else:
         # if all_exposures does not exist, import scrape_headers and make it.
         print "---> all_exposures.txt doesn't exist!!!!! so I'm going to make it now"
-        from spectator.scrape_headers import make_exposure_catalog as make_exposure_catalog
+        from .scrape_headers import make_exposure_catalog as make_exposure_catalog
         DATA_DIR = '.'
         dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits.gz'))
         if len(dataset_list) == 0:
@@ -552,7 +552,7 @@ def get_demographics(dataset_list):
     else:
         # if all_exposures does not exist, import scrape_headers and make it.
         print "---> all_exposures.txt doesn't exist!!!!! so I'm going to make it now"
-        from spectator.scrape_headers import make_exposure_catalog as make_exposure_catalog
+        from .scrape_headers import make_exposure_catalog as make_exposure_catalog
         exposure_cat = make_exposure_catalog(dataset_list)
     mask = exposure_cat['Flag'] == 1
     exposure_cat = exposure_cat[mask]

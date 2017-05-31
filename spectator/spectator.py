@@ -10,9 +10,9 @@ DESCRIPTION: gets demographics and makes quick look plots and tables for Hubble/
 import argparse
 import sys
 
-import scrape_headers
+from . import scrape_headers
 
-from spectator import drive_quick_look
+from . import drive_quick_look
 
 
 def parse_args():

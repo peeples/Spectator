@@ -1,9 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='Spectator',
     version='0.1',
-    packages=['spectator'],
+    packages=find_packages(),
     url='https://github.com/peeples/Spectator',
     license='',
     author='Molly Peeples',
