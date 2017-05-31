@@ -7,23 +7,24 @@ Quick look at spectra and demographics for Hubble/COS data.
 After cloning the repository, install via
 
 ```bash
-python setup.py install
+$ python setup.py install
 ```
 
 Alternatively, you may install directly from GitHub using `pip`
 
 ```bash
-pip install git+https://github.com/peeples/Spectator.git
+$ pip install git+https://github.com/peeples/Spectator.git
 ```
 
 Required packages:
-    - python 2
-    - astropy: http://www.astropy.org/
-    - fitsio: https://pypi.python.org/pypi/fitsio/ (soon to be optional if you 
-    have astropy)
-    - matplotlib
+- python 2
+- astropy: http://www.astropy.org/
+- fitsio: https://pypi.python.org/pypi/fitsio/ (soon to be optional if you have astropy)
+- matplotlib
 
 ## Usage
+
+### Command line
 
 Once installed, the package is callable directly from the command line
 
@@ -35,17 +36,13 @@ where targets is a file to be read in with first column denoting if target is
 to be used (boolean 0/1 flag) and the second column describing the 
 target/directory name.
 
-March 7, 2016
+### In code
 
-To run:
-% python spectator.py targets
-where targets.list is a file to be read in with
-first column = flag (0,1) if target is to be used,
-second column = target/directory name"  
+Spectator can be imported into your code as follows
 
-This will run both scrape_headers (which generates tables of information 
-describing the sample) and quick_look, which generates demographics plots and 
-plots of spectra
+```python
+import spectator
+```
 
 ## Known issues
 
