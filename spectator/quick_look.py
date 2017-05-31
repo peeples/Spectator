@@ -1,23 +1,21 @@
 #! /usr/bin/env python
 
-from astropy.io import fits as f
-from astropy.io import ascii
+import collections
 
+import astropy.units as u
 import fitsio
+import matplotlib as mpl
+import numpy as np
+import scipy.io as scio
+from astropy.coordinates import SkyCoord
+from astropy.io import ascii
+from astropy.io import fits as f
 from astropy.table import Table
 from astropy.time import Time
-from astropy.coordinates import SkyCoord
-from datetime import datetime
-import astropy.units as u
-import collections
-import scipy.io as scio
-import numpy as np
 
-import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter, FormatStrFormatter
-import scipy.interpolate as sp
+from matplotlib.ticker import FormatStrFormatter
 import glob
 import os
 import sys
@@ -35,7 +33,7 @@ def get_quick_look():
     else:
         # if all_exposures does not exist, import scrape_headers and make it.
         print "---> all_exposures.txt doesn't exist!!!!! so I'm going to make it now"
-        from scrape_headers import make_exposure_catalog as make_exposure_catalog
+        from .scrape_headers import make_exposure_catalog as make_exposure_catalog
         DATA_DIR = '.'
         dataset_list = glob.glob(os.path.join(DATA_DIR, '*x1d.fits.gz'))
         if len(dataset_list) == 0:
@@ -554,7 +552,7 @@ def get_demographics(dataset_list):
     else:
         # if all_exposures does not exist, import scrape_headers and make it.
         print "---> all_exposures.txt doesn't exist!!!!! so I'm going to make it now"
-        from scrape_headers import make_exposure_catalog as make_exposure_catalog
+        from .scrape_headers import make_exposure_catalog as make_exposure_catalog
         exposure_cat = make_exposure_catalog(dataset_list)
     mask = exposure_cat['Flag'] == 1
     exposure_cat = exposure_cat[mask]

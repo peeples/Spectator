@@ -1,15 +1,15 @@
 #! /usr/bin/env python
 
-from astropy.io import ascii 
-import numpy as np
-import multiprocessing as mp
 import argparse
-import os 
-import sys  
+import multiprocessing as mp
+import os
+import sys
 
-import quick_look 
+import numpy as np
+from astropy.io import ascii
 
- 
+from . import quick_look
+
 
 def parse_args():
     '''

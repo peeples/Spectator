@@ -10,8 +10,10 @@ DESCRIPTION: gets demographics and makes quick look plots and tables for Hubble/
 import argparse
 import sys
 
-import drive_quick_look 
-import scrape_headers
+from . import scrape_headers
+
+from . import drive_quick_look
+
 
 def parse_args():
     '''
@@ -37,19 +39,22 @@ def parse_args():
     return args
 
 
-
-#-----------------------------------------------------------------------------------------------------
-
-if __name__ == "__main__":
+def main():
     args = parse_args()
-    targets = (args.targets, args.clobber)    
+    targets = (args.targets, args.clobber)
 
-    scrape_headers.scrape_headers(args.targets,args.altnames,args.redshifts)
+    scrape_headers.scrape_headers(args.targets, args.altnames, args.redshifts)
     drive_quick_look.drive_quick_look(targets)
 
     sys.exit("""
-    
+
     ~~~~~~~*~*~*~*~~~~~~~~                                 ~*~*~*~*~~~~~~~~~~~~~
     ~~~~~~~*~*~*~*~~~~~~    all done!!!! spectra are fun!    ~~~~~~~~~~~~~~~~~~~
     ~~~~~~~*~*~*~*~~~~~~~~                                 ~*~*~*~*~~~~~~~~~~~~~
     """)
+
+
+#-----------------------------------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    main()
